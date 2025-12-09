@@ -738,7 +738,7 @@ const zoomControl = initZoomControls(
       spectrogramHeight,        // 維持高度
       currentFreqMin,           // 維持頻率範圍
       currentFreqMax,
-      currentOverlap === 'auto' ? null : getOverlapPercent(),
+      getOverlapPercent(),
       () => {
         renderAxes();
         freqHoverControl?.refreshHover();
