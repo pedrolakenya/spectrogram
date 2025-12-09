@@ -733,6 +733,7 @@ const zoomControl = initZoomControls(
   () => {
     freqHoverControl?.refreshHover();
     autoIdControl?.updateMarkers();
+    updateSpectrogramSettingsText();
     replacePlugin(
       getEffectiveColorMap(),   // 維持當前配色
       spectrogramHeight,        // 維持高度
@@ -741,9 +742,6 @@ const zoomControl = initZoomControls(
       getOverlapPercent(),
       () => {
         renderAxes();
-        freqHoverControl?.refreshHover();
-        autoIdControl?.updateMarkers();
-        updateSpectrogramSettingsText();
         restoreImageEnhancement(); //
       },
       currentFftSize,           // 維持 FFT 設定
