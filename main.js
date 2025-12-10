@@ -1150,10 +1150,16 @@ function updateSpectrogramSettingsText() {
 
 function getOverlapPercent() {
   if (currentOverlap === 'auto') {
-    // Return undefined to allow the plugin to dynamically calculate overlap
-    // based on the current canvas width (which changes during zoom).
-    // The plugin's getFrequencies() method will use this logic:
-    // if (!this.noverlap) { o = Math.max(0, Math.round(fftSamples - (bufferLength / canvasWidth))) }
+    // HYBRID FIX:
+    // 1. If we are in Selection Expansion Mode, force the explicit calculation.
+    //    This ensures the cropped buffer is rendered with the strict logic defined in getAutoOverlapPercent().
+    if (selectionExpandMode) {
+      return getAutoOverlapPercent();
+    }
+    
+    // 2. If we are in Normal Mode (viewing the full file), return undefined.
+    //    This tells the Plugin to use its internal dynamic logic, which updates automatically
+    //    during Zoom/Scroll events without needing a full plugin replacement.
     return undefined;
   }
   const parsed = parseInt(currentOverlap, 10);
