@@ -1,5 +1,5 @@
 import { getTimeExpansionMode } from './fileState.js';
-import { getWavesurfer, getPlugin, getOrCreateWasmEngine } from './wsManager.js';
+import { getWavesurfer, getPlugin, getOrCreateWasmEngine, getAnalysisWasmEngine } from './wsManager.js';
 import { showCallAnalysisPopup, calculateSpectrumWithOverlap, findPeakFrequency } from './callAnalysisPopup.js';
 
 // ============================================================
@@ -1255,14 +1255,15 @@ const upHandler = () => {
       overlap: window.__spectrogramSettings?.overlap || 'auto'
     };
 
-    // Get WASM engine for accelerated bat call detection
-    const wasmEngine = getOrCreateWasmEngine();
+    // [CRITICAL FIX] Get dedicated WASM engine for analysis (FFT 1024)
+    // This ensures measurements match legacy JS Goertzel algorithm
+    const analysisWasmEngine = getAnalysisWasmEngine();
 
     const popupObj = showCallAnalysisPopup({
       selection: selection.data,
       wavesurfer: ws,
       currentSettings,
-      wasmEngine
+      wasmEngine: analysisWasmEngine
     });
 
     // 跟踪 popup

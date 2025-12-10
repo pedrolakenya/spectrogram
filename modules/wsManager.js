@@ -2,6 +2,7 @@
 
 import WaveSurfer from './wavesurfer.esm.js';
 import Spectrogram from './spectrogram.esm.js';
+import { SpectrogramEngine } from './spectrogram_wasm.js';
 
 let ws = null;
 let plugin = null;
@@ -11,6 +12,7 @@ let currentWindowType = 'hann';
 let currentPeakMode = false;
 let currentPeakThreshold = 0.4;
 let currentSmoothMode = true;
+let analysisWasmEngine = null;  // [CRITICAL] Dedicated WASM engine for bat call analysis (FFT 1024)
 
 export function initWavesurfer({
   container,
@@ -208,6 +210,26 @@ export function initScrollSync({
   source.addEventListener('scroll', () => {
     target.scrollLeft = source.scrollLeft;
   });
+}
+
+/**
+ * Get or create a dedicated WASM engine for bat call analysis (FFT 1024)
+ * This MUST use FFT 1024 to match the default behavior of legacy JS Goertzel algorithm
+ * @returns {SpectrogramEngine|null} Dedicated analysis engine or null if WASM not available
+ */
+export function getAnalysisWasmEngine() {
+  // Create only once and reuse for efficiency
+  if (analysisWasmEngine === null || analysisWasmEngine === undefined) {
+    try {
+      // [CRITICAL] Always use FFT 1024 for analysis (matches legacy JS default)
+      analysisWasmEngine = new SpectrogramEngine(1024, 'hann', null);
+      console.log("✅ [WASM Analysis] Created dedicated WASM Engine (FFT 1024) for bat call analysis");
+    } catch (e) {
+      console.warn("⚠️ [WASM Analysis] Failed to create WASM Engine, will fallback to JS:", e);
+      analysisWasmEngine = null;
+    }
+  }
+  return analysisWasmEngine;
 }
 
 /**
