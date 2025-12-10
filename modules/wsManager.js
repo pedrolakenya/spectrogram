@@ -212,12 +212,13 @@ export function initScrollSync({
 
 /**
  * Get or create a SpectrogramEngine instance for WASM-accelerated analysis
- * Useful for fast bat call detection without recreating the plugin
- * @param {number} fftSize - FFT size (default 1024)
+ * IMPORTANT: Automatically detects and uses the FFT size of the currently active Spectrogram plugin
+ * to ensure frequency axis alignment between visualizer and detector.
+ * @param {number} fftSize - Optional override FFT size (if not provided, uses plugin's FFT)
  * @param {string} windowFunc - Window function (default 'hann')
  * @returns {SpectrogramEngine|null} Returns SpectrogramEngine instance or null if WASM not available
  */
-export function getOrCreateWasmEngine(fftSize = 1024, windowFunc = 'hann') {
+export function getOrCreateWasmEngine(fftSize = null, windowFunc = 'hann') {
   // Check if WASM module is available globally
   if (!globalThis._spectrogramWasm || !globalThis._spectrogramWasm.SpectrogramEngine) {
     console.warn('WASM module not available for bat call detection');
@@ -225,7 +226,23 @@ export function getOrCreateWasmEngine(fftSize = 1024, windowFunc = 'hann') {
   }
 
   try {
-    return new globalThis._spectrogramWasm.SpectrogramEngine(fftSize, windowFunc, null);
+    // [CRITICAL] If no FFT size provided, try to get it from the active Spectrogram plugin
+    let effectiveFFTSize = fftSize;
+    
+    if (effectiveFFTSize === null || effectiveFFTSize === undefined) {
+      // Try to get FFT size from the current plugin
+      if (plugin && typeof plugin.getFFTSize === 'function') {
+        effectiveFFTSize = plugin.getFFTSize();
+      } else if (plugin && plugin.fftSamples) {
+        effectiveFFTSize = plugin.fftSamples;
+      } else {
+        // Fallback to currentFftSize variable if available
+        effectiveFFTSize = currentFftSize || 1024;
+      }
+    }
+    
+    console.log(`[WASM Engine] Creating SpectrogramEngine with FFT size: ${effectiveFFTSize}`);
+    return new globalThis._spectrogramWasm.SpectrogramEngine(effectiveFFTSize, windowFunc, null);
   } catch (error) {
     console.warn('Failed to create WASM SpectrogramEngine:', error);
     return null;

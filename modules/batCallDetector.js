@@ -596,8 +596,9 @@ export class BatCallDetector {
    * Much faster than Goertzel algorithm for large audio buffers.
    * Returns: { powerMatrix, timeFrames, freqBins, freqResolution }
    * 
-   * This method leverages Rust WASM for O(N log N) FFT computation
-   * instead of the O(N) per-bin Goertzel approach in generateSpectrogramLegacy.
+   * [CRITICAL FIX] This method now correctly adapts to the WASM engine's actual FFT size,
+   * instead of assuming it matches the detector's config. This fixes frequency misalignment
+   * that occurred when Visualizer (512 FFT) was passed to Detector (1024 FFT expected).
    */
   generateSpectrogramWasm(audioData, sampleRate, flowKHz, fhighKHz) {
     if (!this.wasmEngine) {
@@ -605,59 +606,84 @@ export class BatCallDetector {
       return this.generateSpectrogramLegacy(audioData, sampleRate, flowKHz, fhighKHz);
     }
 
-    const { fftSize, hopPercent } = this.config;
-    const hopSize = Math.floor(fftSize * (hopPercent / 100));
-    
-    if (hopSize < 1 || fftSize > audioData.length) {
-      console.warn('FFT size too large for audio data');
-      return null;
-    }
-    
     try {
-      // 1. Compute via WASM (O(N log N)) - returns linear magnitude flat array
-      const rawSpectrum = this.wasmEngine.compute_spectrogram(audioData, hopSize);
+      // [CRITICAL FIX] 1. Get the ACTUAL FFT size from WASM engine, not from config
+      // This ensures frequency axis alignment even when using visualizer's smaller FFT
+      const effectiveFFTSize = this.wasmEngine.get_fft_size();
       
-      // 2. Metadata calculation
+      // 2. Calculate hop size based on effective FFT size
+      const { hopPercent } = this.config;
+      const hopSize = Math.floor(effectiveFFTSize * (hopPercent / 100));
+      const overlapSamples = effectiveFFTSize - hopSize;
+      
+      if (hopSize < 1 || effectiveFFTSize > audioData.length) {
+        console.warn('FFT size too large for audio data');
+        return null;
+      }
+      
+      // 3. Compute via WASM (O(N log N)) - returns linear magnitude flat array
+      const rawSpectrum = this.wasmEngine.compute_spectrogram(audioData, overlapSamples);
+      
+      // 4. Get correct bin count and frequency resolution based on WASM's actual FFT size
       const numBinsTotal = this.wasmEngine.get_freq_bins();
-      const freqResolution = sampleRate / fftSize;
+      // [CRITICAL] Use effective FFT size for frequency resolution calculation
+      const freqResolution = sampleRate / effectiveFFTSize;
       const numFrames = Math.floor(rawSpectrum.length / numBinsTotal);
       
-      if (numFrames < 1 || numBinsTotal < 1) {
+      if (numFrames < 1 || numBinsTotal < 1 || rawSpectrum.length === 0) {
         console.warn('Invalid WASM output dimensions');
         return this.generateSpectrogramLegacy(audioData, sampleRate, flowKHz, fhighKHz);
       }
       
-      // 3. Frequency mapping (Crop to flowKHz - fhighKHz)
+      // 5. Frequency mapping (Crop to flowKHz - fhighKHz)
       const minBin = Math.max(0, Math.floor(flowKHz * 1000 / freqResolution));
       const maxBin = Math.min(numBinsTotal - 1, Math.floor(fhighKHz * 1000 / freqResolution));
       const numBinsOfInterest = maxBin - minBin + 1;
+      
+      if (numBinsOfInterest <= 0) {
+        console.warn('No frequency bins in requested range');
+        return null;
+      }
       
       const powerMatrix = new Array(numFrames);
       const timeFrames = new Array(numFrames);
       const freqBins = new Float32Array(numBinsOfInterest);
       
-      // Pre-calculate freq bins
+      // Pre-calculate frequency axis
       for (let i = 0; i < numBinsOfInterest; i++) {
         freqBins[i] = (minBin + i) * freqResolution;
       }
       
-      // 4. Reshape & Convert to dB (O(N)) - much faster than Goertzel calculation
+      // 6. Reshape & Convert to dB (O(N))
       for (let f = 0; f < numFrames; f++) {
         const framePower = new Float32Array(numBinsOfInterest);
         const frameOffset = f * numBinsTotal;
         
+        // Calculate time stamp using effective FFT size
+        const frameStart = f * hopSize;
+        timeFrames[f] = (frameStart + effectiveFFTSize / 2) / sampleRate;
+        
         for (let b = 0; b < numBinsOfInterest; b++) {
           const sourceIdx = frameOffset + (minBin + b);
+          
+          // Safety check
+          if (sourceIdx >= rawSpectrum.length) break;
+          
           const magnitude = rawSpectrum[sourceIdx];
           // Convert to dB: 10 * log10(magnitude^2 / fftSize)
-          // Ensure to handle epsilon to avoid -Infinity
-          const psd = (magnitude * magnitude) / fftSize;
+          // [CRITICAL] Use effective FFT size for normalization
+          const psd = (magnitude * magnitude) / effectiveFFTSize;
           framePower[b] = 10 * Math.log10(Math.max(psd, 1e-16));
         }
         
         powerMatrix[f] = framePower;
-        const frameStart = f * hopSize;
-        timeFrames[f] = (frameStart + fftSize / 2) / sampleRate;
+      }
+      
+      // [IMPORTANT] Update config fftSize to match actual WASM engine for consistency
+      // This ensures subsequent measurement functions use correct frequency resolution
+      if (this.config.fftSize !== effectiveFFTSize) {
+        console.log(`[FFT Alignment] Detector config FFT adjusted from ${this.config.fftSize} to ${effectiveFFTSize}`);
+        this.config.fftSize = effectiveFFTSize;
       }
       
       return { powerMatrix, timeFrames, freqBins, freqResolution };
