@@ -253,7 +253,8 @@ function generateColorMapRGBA(mapName, gain = 1.0) {
         ],
         sonoradar: [
             { pos: 0.0, r: 0, g: 0, b: 0 },       // 全黑背景
-            { pos: 0.15, r: 45, g: 20, b: 5 },    // 深咖啡色：顯示極微弱信號 (Noise floor)
+            { pos: 0.15, r: 0, g: 0, b: 0 }, 
+            { pos: 0.2, r: 45, g: 20, b: 5 },    // 深咖啡色：顯示極微弱信號 (Noise floor)
             { pos: 0.4, r: 180, g: 90, b: 10 },   // 焦糖橘色：中等強度過渡
             { pos: 0.7, r: 255, g: 215, b: 0 },   // 金色：主要信號
             { pos: 0.85, r: 255, g: 240, b: 150 }, // 淺鵝黃：強信號高光
