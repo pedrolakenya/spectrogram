@@ -413,7 +413,7 @@ function initLoadingOverlayTheme() {
     styleEl.id = 'loading-overlay-theme-style';
     styleEl.textContent = `
       #loading-overlay {
-        background-color: rgba(0, 0, 0, 0.5);
+        background: none;
       }
       
       #loading-overlay .spinner {
