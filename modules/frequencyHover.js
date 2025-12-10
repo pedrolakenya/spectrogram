@@ -1,5 +1,5 @@
 import { getTimeExpansionMode } from './fileState.js';
-import { getWavesurfer, getPlugin } from './wsManager.js';
+import { getWavesurfer, getPlugin, getOrCreateWasmEngine } from './wsManager.js';
 import { showCallAnalysisPopup, calculateSpectrumWithOverlap, findPeakFrequency } from './callAnalysisPopup.js';
 
 // ============================================================
@@ -1255,10 +1255,14 @@ const upHandler = () => {
       overlap: window.__spectrogramSettings?.overlap || 'auto'
     };
 
+    // Get WASM engine for accelerated bat call detection
+    const wasmEngine = getOrCreateWasmEngine();
+
     const popupObj = showCallAnalysisPopup({
       selection: selection.data,
       wavesurfer: ws,
-      currentSettings
+      currentSettings,
+      wasmEngine
     });
 
     // 跟踪 popup

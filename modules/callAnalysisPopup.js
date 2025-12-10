@@ -46,7 +46,8 @@ window.__batCallControlsMemory = window.__batCallControlsMemory || {
 export function showCallAnalysisPopup({
   selection,
   wavesurfer,
-  currentSettings = {}
+  currentSettings = {},
+  wasmEngine = null
 }) {
   if (!wavesurfer || !selection) return null;
 
@@ -164,7 +165,8 @@ export function showCallAnalysisPopup({
   let lastPeakFreq = null;
   
   // 初始化 Bat Call Detector（用於檢測 Bat Call 參數）
-  const detector = new BatCallDetector(batCallConfig);
+  // 如果提供了 wasmEngine，將使用 WASM 加速版本；否則使用 JavaScript Goertzel
+  const detector = new BatCallDetector(batCallConfig, wasmEngine);
 
   // 繪製函數（只用 Power Spectrum 配置，不涉及 Bat Call 檢測）
   const redrawSpectrum = async (newSelection) => {
@@ -320,7 +322,7 @@ export function showCallAnalysisPopup({
       // 如果濾波被啟用且有偵測到 call，重新用原始音頻計算 call
       // 使用原始音頻的 SNR 更準確
       if (batCallConfig.enableHighpassFilter && calls.length > 0) {
-        const originalDetector = new (detector.constructor)(batCallConfig);
+        const originalDetector = new (detector.constructor)(batCallConfig, wasmEngine);
         const originalCalls = await originalDetector.detectCalls(
           audioData,  // 使用原始未濾波的音頻來計算更準確的 SNR
           sampleRate,

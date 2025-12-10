@@ -209,3 +209,26 @@ export function initScrollSync({
     target.scrollLeft = source.scrollLeft;
   });
 }
+
+/**
+ * Get or create a SpectrogramEngine instance for WASM-accelerated analysis
+ * Useful for fast bat call detection without recreating the plugin
+ * @param {number} fftSize - FFT size (default 1024)
+ * @param {string} windowFunc - Window function (default 'hann')
+ * @returns {SpectrogramEngine|null} Returns SpectrogramEngine instance or null if WASM not available
+ */
+export function getOrCreateWasmEngine(fftSize = 1024, windowFunc = 'hann') {
+  // Check if WASM module is available globally
+  if (!globalThis._spectrogramWasm || !globalThis._spectrogramWasm.SpectrogramEngine) {
+    console.warn('WASM module not available for bat call detection');
+    return null;
+  }
+
+  try {
+    return new globalThis._spectrogramWasm.SpectrogramEngine(fftSize, windowFunc, null);
+  } catch (error) {
+    console.warn('Failed to create WASM SpectrogramEngine:', error);
+    return null;
+  }
+}
+

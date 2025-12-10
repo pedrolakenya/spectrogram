@@ -11,7 +11,17 @@
  * and comparing bat call parameters with scientific precision.
  */
 
-import { BatCall } from './batCallDetector.js';
+import { BatCall, BatCallDetector } from './batCallDetector.js';
+
+/**
+ * Initialize a BatCallDetector with optional WASM engine for performance
+ * @param {Object} config - Configuration object
+ * @param {Object} wasmEngine - Optional SpectrogramEngine instance for WASM acceleration
+ * @returns {BatCallDetector}
+ */
+export function initBatCallDetector(config = {}, wasmEngine = null) {
+  return new BatCallDetector(config, wasmEngine);
+}
 
 /**
  * Batch analysis results container

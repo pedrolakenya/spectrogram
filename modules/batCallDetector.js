@@ -252,10 +252,11 @@ export class BatCall {
  * Main Bat Call Detector Class
  */
 export class BatCallDetector {
-  constructor(config = {}) {
+  constructor(config = {}, wasmEngine = null) {
     this.config = { ...DEFAULT_DETECTION_CONFIG, ...config };
     this.applyWindow = getApplyWindowFunction();
     this.goertzelEnergy = getGoertzelEnergyFunction();
+    this.wasmEngine = wasmEngine;  // Optional WASM engine for performance optimization
   }
   
   /**
@@ -591,10 +592,86 @@ export class BatCallDetector {
   }
   
   /**
-   * Generate high-resolution STFT spectrogram
+   * Generate high-resolution STFT spectrogram using WebAssembly FFT
+   * Much faster than Goertzel algorithm for large audio buffers.
+   * Returns: { powerMatrix, timeFrames, freqBins, freqResolution }
+   * 
+   * This method leverages Rust WASM for O(N log N) FFT computation
+   * instead of the O(N) per-bin Goertzel approach in generateSpectrogramLegacy.
+   */
+  generateSpectrogramWasm(audioData, sampleRate, flowKHz, fhighKHz) {
+    if (!this.wasmEngine) {
+      console.warn('WASM engine not available, falling back to legacy method');
+      return this.generateSpectrogramLegacy(audioData, sampleRate, flowKHz, fhighKHz);
+    }
+
+    const { fftSize, hopPercent } = this.config;
+    const hopSize = Math.floor(fftSize * (hopPercent / 100));
+    
+    if (hopSize < 1 || fftSize > audioData.length) {
+      console.warn('FFT size too large for audio data');
+      return null;
+    }
+    
+    try {
+      // 1. Compute via WASM (O(N log N)) - returns linear magnitude flat array
+      const rawSpectrum = this.wasmEngine.compute_spectrogram(audioData, hopSize);
+      
+      // 2. Metadata calculation
+      const numBinsTotal = this.wasmEngine.get_freq_bins();
+      const freqResolution = sampleRate / fftSize;
+      const numFrames = Math.floor(rawSpectrum.length / numBinsTotal);
+      
+      if (numFrames < 1 || numBinsTotal < 1) {
+        console.warn('Invalid WASM output dimensions');
+        return this.generateSpectrogramLegacy(audioData, sampleRate, flowKHz, fhighKHz);
+      }
+      
+      // 3. Frequency mapping (Crop to flowKHz - fhighKHz)
+      const minBin = Math.max(0, Math.floor(flowKHz * 1000 / freqResolution));
+      const maxBin = Math.min(numBinsTotal - 1, Math.floor(fhighKHz * 1000 / freqResolution));
+      const numBinsOfInterest = maxBin - minBin + 1;
+      
+      const powerMatrix = new Array(numFrames);
+      const timeFrames = new Array(numFrames);
+      const freqBins = new Float32Array(numBinsOfInterest);
+      
+      // Pre-calculate freq bins
+      for (let i = 0; i < numBinsOfInterest; i++) {
+        freqBins[i] = (minBin + i) * freqResolution;
+      }
+      
+      // 4. Reshape & Convert to dB (O(N)) - much faster than Goertzel calculation
+      for (let f = 0; f < numFrames; f++) {
+        const framePower = new Float32Array(numBinsOfInterest);
+        const frameOffset = f * numBinsTotal;
+        
+        for (let b = 0; b < numBinsOfInterest; b++) {
+          const sourceIdx = frameOffset + (minBin + b);
+          const magnitude = rawSpectrum[sourceIdx];
+          // Convert to dB: 10 * log10(magnitude^2 / fftSize)
+          // Ensure to handle epsilon to avoid -Infinity
+          const psd = (magnitude * magnitude) / fftSize;
+          framePower[b] = 10 * Math.log10(Math.max(psd, 1e-16));
+        }
+        
+        powerMatrix[f] = framePower;
+        const frameStart = f * hopSize;
+        timeFrames[f] = (frameStart + fftSize / 2) / sampleRate;
+      }
+      
+      return { powerMatrix, timeFrames, freqBins, freqResolution };
+    } catch (error) {
+      console.warn('WASM computation failed:', error);
+      return this.generateSpectrogramLegacy(audioData, sampleRate, flowKHz, fhighKHz);
+    }
+  }
+
+  /**
+   * Generate high-resolution STFT spectrogram using legacy Goertzel algorithm
    * Returns: { powerMatrix, timeFrames, freqBins, freqResolution }
    */
-  generateSpectrogram(audioData, sampleRate, flowKHz, fhighKHz) {
+  generateSpectrogramLegacy(audioData, sampleRate, flowKHz, fhighKHz) {
     const { fftSize, hopPercent, windowType } = this.config;
     const hopSize = Math.floor(fftSize * (hopPercent / 100));
     
@@ -657,6 +734,24 @@ export class BatCallDetector {
     
     return { powerMatrix, timeFrames, freqBins, freqResolution };
   }
+
+  /**
+   * Generate high-resolution STFT spectrogram
+   * Returns: { powerMatrix, timeFrames, freqBins, freqResolution }
+   */
+  generateSpectrogram(audioData, sampleRate, flowKHz, fhighKHz) {
+    // Use WASM engine if available, fallback to legacy Goertzel
+    if (this.wasmEngine) {
+      return this.generateSpectrogramWasm(audioData, sampleRate, flowKHz, fhighKHz);
+    }
+    return this.generateSpectrogramLegacy(audioData, sampleRate, flowKHz, fhighKHz);
+  }
+
+  /**
+   * Generate high-resolution STFT spectrogram
+   * Returns: { powerMatrix, timeFrames, freqBins, freqResolution }
+   */
+
   
   /**
    * Phase 1: Detect call segments using energy threshold
