@@ -1640,7 +1640,7 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
         }
       }
       
-      // Major Jump Protection (> 4.0 kHz) - Immediate Stop
+      // Major Jump Protection (> 6.0 kHz) - Immediate Stop
       if (foundBin && foundStartFreq_Hz !== null) {
         const currentFreq_kHz = foundStartFreq_Hz / 1000;
         let lastValidFreq_kHz = null;
@@ -1655,7 +1655,7 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
         
         if (lastValidFreq_kHz !== null) {
           const jumpDiff = Math.abs(currentFreq_kHz - lastValidFreq_kHz);
-          if (jumpDiff > 4.0) {
+          if (jumpDiff > 6.0) {
             break; // Stop scanning
           }
         }
@@ -1692,7 +1692,7 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
       const freqDifference = Math.abs(currFreq_kHz - prevFreq_kHz);
       
       // Major Jump check (redundant safety)
-      if (freqDifference > 4.0) {
+      if (freqDifference > 6.0) {
         optimalThreshold = validMeasurements[i - 1].threshold;
         optimalMeasurement = validMeasurements[i - 1];
         break;
