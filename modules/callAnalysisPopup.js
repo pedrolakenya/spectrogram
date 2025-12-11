@@ -275,10 +275,27 @@ export function showCallAnalysisPopup({
         batCallConfig.highpassFilterFreq_kHz_isAuto = shouldBeAuto;
       }
       
-      // 2025: Auto Mode 時，根據peakFreq計算自動高通濾波器頻率
-      // 使用原始spectrum的peakFreq（未濾波）
-      if (batCallConfig.highpassFilterFreq_kHz_isAuto === true && peakFreq) {
-        batCallConfig.highpassFilterFreq_kHz = detector.calculateAutoHighpassFilterFreq(peakFreq);
+      // 2025 ENHANCEMENT: Use precise peak frequency calculated from raw audio
+      // Instead of relying on UI spectrum visualization (which can vary with selection size),
+      // calculate the peak using the same high-precision method as the detector (FFT + Parabolic Interpolation)
+      let precisePeakFreq = null;
+      try {
+        precisePeakFreq = await detector.getPrecisePeakFrequency(
+          audioData,
+          sampleRate,
+          selection.Flow,
+          selection.Fhigh
+        );
+      } catch (e) {
+        // Fallback to UI spectrum peak if precise calculation fails
+        console.warn('[updateBatCallAnalysis] Failed to calculate precise peak, using UI spectrum peak:', e);
+        precisePeakFreq = peakFreq;
+      }
+      
+      // Auto Mode 時，根據precisePeakFreq計算自動高通濾波器頻率
+      // 使用高精度的peakFreq（FFT + Parabolic Interpolation），而非UI spectrum的粗略值
+      if (batCallConfig.highpassFilterFreq_kHz_isAuto === true && precisePeakFreq) {
+        batCallConfig.highpassFilterFreq_kHz = detector.calculateAutoHighpassFilterFreq(precisePeakFreq);
       }
       
       // 同步detector.config以確保使用最新的batCallConfig值
