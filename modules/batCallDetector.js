@@ -2212,6 +2212,13 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
           continue;
         }
         
+        // 2025 NEW: Apply Highpass Filter Protection
+        // If Highpass Filter is enabled, ignore frequencies below the cutoff
+        // This prevents the detector from picking up filtered-out noise as Start Frequency
+        if (this.config.enableHighpassFilter && testStartFreq_kHz < this.config.highpassFilterFreq_kHz) {
+          continue; // Skip frequencies cut off by the highpass filter
+        }
+        
         // 檢查是否低於 Peak Frequency（規則 a）
         if (testStartFreq_kHz < peakFreqInKHz) {
           // 滿足規則 (a)：使用此值為 Start Frequency
