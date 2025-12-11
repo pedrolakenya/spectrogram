@@ -1,7 +1,3 @@
-/**
- * Professional-grade Bat Call Detection and Parameter Measurement Module
- */
-
 import { getApplyWindowFunction, getGoertzelEnergyFunction } from './callAnalysisPopup.js';
 export const DEFAULT_DETECTION_CONFIG = {
   // Energy threshold (dB below maximum within frequency range)
@@ -11,9 +7,7 @@ export const DEFAULT_DETECTION_CONFIG = {
   // High frequency threshold (dB below peak for finding edges)
   highFreqThreshold_dB: -24,  // Threshold for calculating High Frequency (optimal value range: -24 to -70)
   
-  // Automatic high frequency threshold optimization
-  // When enabled, automatically tests thresholds from -24dB to -70dB to find optimal value that provides stable measurements
-  // Default: false (manual threshold mode)
+  // Automatic high frequency threshold optimization, automatically tests thresholds from -24dB to -70dB to find optimal value that provides stable measurements
   highFreqThreshold_dB_isAuto: true,
   
   // Low frequency threshold (dB below peak for finding edges) 
@@ -21,10 +15,7 @@ export const DEFAULT_DETECTION_CONFIG = {
   // This is used for finding the lowest frequency in the call (last frame)
   lowFreqThreshold_dB: -27,
   
-  // Automatic low frequency threshold optimization
-  // When enabled, automatically tests thresholds from -24dB to -70dB to find optimal value that provides stable measurements
-  // Works symmetrically with high frequency optimization
-  // Default: true (automatic threshold mode - enabled by default)
+  // Automatic low frequency threshold optimization, automatically tests thresholds from -24dB to -70dB to find optimal value that provides stable measurements
   lowFreqThreshold_dB_isAuto: true,
   
   // Characteristic frequency is defined as lowest or average frequency in the last 10-20% of the call duration
@@ -68,18 +59,13 @@ export const DEFAULT_DETECTION_CONFIG = {
   
   // Trick 2: Maximum Frequency Drop Rule (kHz)
   // Once frequency drops by this amount below peak, lock and don't accept further increases
-  // Typical: 10 kHz (standard in Avisoft, SonoBat, Kaleidoscope)
   maxFrequencyDropThreshold_kHz: 10,
   
   // Trick 3: Protection window after peak energy (ms)
   // Only accept call content within this duration after peak energy frame
-  // Typical: 10 ms (at 384kHz ≈ 75-80 frames, at 256kHz ≈ 50-54 frames)
   protectionWindowAfterPeak_ms: 10,
 };
 
-/**
- * Call type classification helper
- */
 export class CallTypeClassifier {
   static classify(call) {
     if (!call.bandwidth_kHz || call.bandwidth_kHz < 5) {
@@ -108,9 +94,6 @@ export class CallTypeClassifier {
   }
 }
 
-/**
- * Represents a single detected bat call with all parameters
- */
 export class BatCall {
   constructor() {
     this.startTime_s = null;        // Call start time (seconds)
@@ -1402,8 +1385,8 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
    * Testing sequence: -24, -25, -26, ..., -69, -70 dB
    * 
    * Anomaly detection:
-   * - Major jump (> 3 kHz): Stop immediately, use previous threshold
-   * - Large jump (1.5-3 kHz): First anomaly detection point
+   * - Major jump (> 2 kHz): Stop immediately, use previous threshold
+   * - Large jump (1.5-2 kHz): First anomaly detection point
    * - Check if anomaly is followed by 3+ consecutive normal values
    * - If yes: ignore anomaly and continue
    * - If no: use threshold just before anomaly
@@ -3132,7 +3115,6 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
     }
     
     // Second pass: find frequency range based on -27dB threshold from peak
-    // (Commercial standard from Avisoft, SonoBat)
     if (peakPower_dB > -Infinity) {
       const threshold_dB = peakPower_dB + highFreqThreshold_dB; // Typically -24dB
       
@@ -3168,12 +3150,6 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
     const call = new BatCall();
     call.peakFreq_kHz = peakFreq_Hz ? peakFreq_Hz / 1000 : null;
     call.peakPower_dB = peakPower_dB;
-    
-    // Set Flow and Fhigh based on detected frequency range
-    // (Commercial standard from Avisoft, SonoBat, Kaleidoscope, BatSound)
-    // Flow = Lowest frequency in the selection (Hz)
-    // Fhigh = Highest frequency in the selection (kHz)
-    // Note: For direct user selection, may not have complete frequency sweep
     call.Flow = lowestFreq_Hz ? lowestFreq_Hz : (flowKHz * 1000);     // Hz
     call.Fhigh = highestFreq_Hz ? (highestFreq_Hz / 1000) : fhighKHz; // kHz
     
