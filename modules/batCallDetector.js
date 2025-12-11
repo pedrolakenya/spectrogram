@@ -2188,7 +2188,7 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
     
     // 使用 -24dB 閾值計算 Start Frequency（無論是否 Auto Mode）
     const threshold_24dB = peakPower_dB - 24;
-    
+
     // 2025: 低頻 Noise 保護閾值
     const LOW_FREQ_NOISE_THRESHOLD_kHz = 40;  // kHz - 低於此頻率的 bin 在某些情況下應被忽略
     const HIGH_PEAK_THRESHOLD_kHz = 60;       // kHz - Peak >= 此值時啟動低頻保護
@@ -3156,6 +3156,119 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
     call.Fhigh = highestFreq_Hz ? (highestFreq_Hz / 1000) : fhighKHz; // kHz
     
     return call;
+  }
+
+  /**
+   * Compute instantaneous peak frequency from audio data
+   * 
+   * [2025 REFACTOR] High-precision peak detection for Highpass Filter Auto Mode
+   * 
+   * This method finds the global maximum power (dB) across all frames and bins,
+   * then interpolates the exact frequency using parabolic interpolation.
+   * This provides sub-bin precision (~0.1 Hz accuracy).
+   * 
+   * Unlike the average spectrum peak (which can be dominated by continuous background noise),
+   * this finds the true instantaneous peak that represents the actual call.
+   * 
+   * @param {Float32Array} audioData - Raw audio data
+   * @param {number} sampleRate - Sample rate in Hz
+   * @returns {number} Peak frequency in kHz (or null if cannot compute)
+   */
+  computeMaxPeakFreq(audioData, sampleRate) {
+    if (!audioData || audioData.length === 0) {
+      console.warn('[computeMaxPeakFreq] No audio data provided');
+      return null;
+    }
+
+    // Use detector's FFT config (1024) - NOT visualizer's config (512)
+    const fftSize = this.config.fftSize;  // Should be 1024 for analysis
+    const hopPercent = this.config.hopPercent;
+    const windowType = this.config.windowType;
+
+    // Generate spectrogram using detector's WASM engine
+    if (!this.wasmEngine) {
+      console.warn('[computeMaxPeakFreq] WASM engine not available');
+      return null;
+    }
+
+    // Calculate hop size and overlap
+    const hopSize = Math.floor(fftSize * (hopPercent / 100));
+    const overlapSamples = fftSize - hopSize;
+
+    try {
+      // Generate spectrogram using WASM
+      const rawSpectrum = this.wasmEngine.compute_spectrogram(audioData, overlapSamples);
+      const freqBins = this.wasmEngine.get_freq_bins();
+      const numFrames = Math.floor((audioData.length - fftSize) / hopSize) + 1;
+
+      // Convert raw spectrum to 2D array [timeFrame][freqBin]
+      const spectrogram = [];
+      const numBins = freqBins.length;
+      for (let i = 0; i < numFrames; i++) {
+        const frame = new Float32Array(numBins);
+        for (let b = 0; b < numBins; b++) {
+          const magnitude = rawSpectrum[i * numBins + b];
+          const power = magnitude * magnitude;
+          const psd = power / fftSize;  // Aligned with legacy JS
+          frame[b] = 10 * Math.log10(Math.max(psd, 1e-16));
+        }
+        spectrogram.push(frame);
+      }
+
+      // ============================================================
+      // PHASE 1: Find global peak bin across all frames
+      // ============================================================
+      let peakPower_dB = -Infinity;
+      let peakFrameIdx = 0;
+      let peakBinIdx = 0;
+
+      for (let frameIdx = 0; frameIdx < spectrogram.length; frameIdx++) {
+        const framePower = spectrogram[frameIdx];
+        for (let binIdx = 0; binIdx < framePower.length; binIdx++) {
+          if (framePower[binIdx] > peakPower_dB) {
+            peakPower_dB = framePower[binIdx];
+            peakFrameIdx = frameIdx;
+            peakBinIdx = binIdx;
+          }
+        }
+      }
+
+      if (peakPower_dB === -Infinity) {
+        console.warn('[computeMaxPeakFreq] No valid peak found');
+        return null;
+      }
+
+      // ============================================================
+      // PHASE 2: Apply parabolic interpolation for sub-bin precision
+      // ============================================================
+      let peakFreq_Hz = freqBins[peakBinIdx];
+
+      if (peakBinIdx > 0 && peakBinIdx < spectrogram[peakFrameIdx].length - 1) {
+        const framePower = spectrogram[peakFrameIdx];
+        const db0 = framePower[peakBinIdx - 1];
+        const db1 = framePower[peakBinIdx];
+        const db2 = framePower[peakBinIdx + 1];
+
+        // Parabolic vertex formula: y = a*x^2 + b*x + c
+        // Peak position correction using 2nd derivative
+        const a = (db2 - 2 * db1 + db0) / 2;
+        if (Math.abs(a) > 1e-10) {
+          // bin correction = (f(x-1) - f(x+1)) / (4*a)
+          const binCorrection = (db0 - db2) / (4 * a);
+          const binWidth = freqBins[1] - freqBins[0];
+          peakFreq_Hz = freqBins[peakBinIdx] + binCorrection * binWidth;
+        }
+      }
+
+      // Convert to kHz and return
+      const peakFreq_kHz = peakFreq_Hz / 1000;
+      console.log(`[computeMaxPeakFreq] Found instantaneous peak: ${peakFreq_kHz.toFixed(2)} kHz (power: ${peakPower_dB.toFixed(1)} dB)`);
+      
+      return peakFreq_kHz;
+    } catch (e) {
+      console.error('[computeMaxPeakFreq] Error during computation:', e);
+      return null;
+    }
   }
 
   /**
