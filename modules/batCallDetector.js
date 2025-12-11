@@ -2196,14 +2196,14 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
       if (firstFramePower[binIdx] > threshold_24dB) {
         const testStartFreq_Hz = freqBins[binIdx];
         const testStartFreq_kHz = testStartFreq_Hz / 1000;
-        
-        // 2025: 應用低頻 Noise 保護機制
-        // 若 Peak ≥ 60 kHz，忽略 40 kHz 或以下的候選值
-        if (shouldIgnoreLowFreqNoise && testStartFreq_kHz <= LOW_FREQ_NOISE_THRESHOLD_kHz) {
-          // 此 bin 被視為低頻 noise，跳過
-          continue;
+
+        // 2025 NEW: Apply Highpass Filter Protection
+        // If Highpass Filter is enabled, ignore frequencies below the cutoff
+        // This prevents the detector from picking up filtered-out noise as Start Frequency
+        if (this.config.enableHighpassFilter && testStartFreq_kHz < this.config.highpassFilterFreq_kHz) {
+          continue; // Skip frequencies cut off by the highpass filter
         }
-        
+
         // 檢查是否低於 Peak Frequency（規則 a）
         if (testStartFreq_kHz < peakFreqInKHz) {
           // 滿足規則 (a)：使用此值為 Start Frequency
