@@ -283,11 +283,9 @@ export function showCallAnalysisPopup({
       // ============================================================
       
       // Step 1: Pre-scan using detector's call detection logic on raw audio
-      // Constraint: Force low-frequency limit to 15 kHz to avoid locking onto noise
+
       let flowKHz_pre = (selection.Flow || 0) / 1000;
-      if (flowKHz_pre < 15) {
-        flowKHz_pre = 15;  // Constraint: Ignore sub-15kHz during pre-scan
-      }
+
       const fhighKHz_pre = selection.Fhigh ? selection.Fhigh / 1000 : null;
       
       let autoFilterFreqCalculated = false;
