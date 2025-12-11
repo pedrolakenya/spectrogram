@@ -3159,12 +3159,12 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
   }
 
   /**
-   * Compute instantaneous peak frequency from audio data
+   * Compute instantaneous peak frequency from audio data within a frequency range
    * 
    * [2025 REFACTOR] High-precision peak detection for Highpass Filter Auto Mode
    * 
-   * This method finds the global maximum power (dB) across all frames and bins,
-   * then interpolates the exact frequency using parabolic interpolation.
+   * This method finds the global maximum power (dB) across all frames within the
+   * specified frequency range, then interpolates the exact frequency using parabolic interpolation.
    * This provides sub-bin precision (~0.1 Hz accuracy).
    * 
    * Unlike the average spectrum peak (which can be dominated by continuous background noise),
@@ -3172,9 +3172,11 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
    * 
    * @param {Float32Array} audioData - Raw audio data
    * @param {number} sampleRate - Sample rate in Hz
+   * @param {number} flowKHz - Low frequency boundary in kHz (default: 0)
+   * @param {number} fhighKHz - High frequency boundary in kHz (default: Nyquist)
    * @returns {number} Peak frequency in kHz (or null if cannot compute)
    */
-  computeMaxPeakFreq(audioData, sampleRate) {
+  computeMaxPeakFreq(audioData, sampleRate, flowKHz = 0, fhighKHz = null) {
     if (!audioData || audioData.length === 0) {
       console.warn('[computeMaxPeakFreq] No audio data provided');
       return null;
@@ -3215,15 +3217,38 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
       }
 
       // ============================================================
-      // PHASE 1: Find global peak across all frames and bins
+      // Calculate frequency range bin indices
+      // ============================================================
+      const minBin = Math.max(0, Math.floor(flowKHz * 1000 / freqResolution));
+      
+      // Default to Nyquist if not specified
+      const maxFreqKHz = fhighKHz || (sampleRate / 2 / 1000);
+      const maxBin = Math.min(numBinsTotal - 1, Math.floor(maxFreqKHz * 1000 / freqResolution));
+
+      if (maxBin <= minBin) {
+        console.warn('[computeMaxPeakFreq] Invalid frequency range', {
+          flowKHz,
+          fhighKHz: maxFreqKHz,
+          minBin,
+          maxBin,
+          freqResolution
+        });
+        return null;
+      }
+
+      console.log(`[computeMaxPeakFreq] Searching in range: ${flowKHz}-${maxFreqKHz} kHz (bins ${minBin}-${maxBin})`);
+
+      // ============================================================
+      // PHASE 1: Find peak within specified frequency range
       // ============================================================
       let peakPower_dB = -Infinity;
       let peakFrameIdx = 0;
-      let peakBinIdx = 0;
+      let peakBinIdx = minBin;
 
       for (let frameIdx = 0; frameIdx < numFrames; frameIdx++) {
         const frameOffset = frameIdx * numBinsTotal;
-        for (let binIdx = 0; binIdx < numBinsTotal; binIdx++) {
+        // Only search within the specified frequency range [minBin, maxBin]
+        for (let binIdx = minBin; binIdx <= maxBin; binIdx++) {
           const magnitude = rawSpectrum[frameOffset + binIdx];
           
           // Convert to dB
@@ -3240,7 +3265,12 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
       }
 
       if (peakPower_dB === -Infinity || isNaN(peakPower_dB)) {
-        console.warn('[computeMaxPeakFreq] No valid peak found, peakPower_dB =', peakPower_dB);
+        console.warn('[computeMaxPeakFreq] No valid peak found in range', {
+          flowKHz,
+          fhighKHz: maxFreqKHz,
+          minBin,
+          maxBin
+        });
         return null;
       }
 
@@ -3249,8 +3279,8 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
       // ============================================================
       let peakFreq_Hz = peakBinIdx * freqResolution;
       
-      // Apply parabolic interpolation if peak is not at edges
-      if (peakBinIdx > 0 && peakBinIdx < numBinsTotal - 1) {
+      // Apply parabolic interpolation if peak is not at edges of the search range
+      if (peakBinIdx > minBin && peakBinIdx < maxBin) {
         const frameOffset = peakFrameIdx * numBinsTotal;
         
         // Get the dB values of neighboring bins

@@ -280,7 +280,13 @@ export function showCallAnalysisPopup({
       // 使用 detector 的 computeMaxPeakFreq() 找到全局最大功率的瞬時峰值
       if (batCallConfig.highpassFilterFreq_kHz_isAuto === true) {
         // Compute instantaneous peak frequency using detector's 1024 FFT (not visualizer's 512 FFT)
-        const instantaneousPeakFreq_kHz = await detector.computeMaxPeakFreq(audioData, sampleRate);
+        // IMPORTANT: Pass flowKHz and fhighKHz to limit search to selection frequency range
+        const instantaneousPeakFreq_kHz = await detector.computeMaxPeakFreq(
+          audioData, 
+          sampleRate,
+          selection.Flow,  // Low frequency boundary in kHz
+          selection.Fhigh  // High frequency boundary in kHz
+        );
         
         if (instantaneousPeakFreq_kHz !== null) {
           batCallConfig.highpassFilterFreq_kHz = detector.calculateAutoHighpassFilterFreq(instantaneousPeakFreq_kHz);
