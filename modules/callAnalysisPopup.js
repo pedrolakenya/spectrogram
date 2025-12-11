@@ -262,15 +262,6 @@ export function showCallAnalysisPopup({
   };
 
   // 根據 peakFreq 計算最佳的高通濾波器頻率（Auto Mode 使用）
-  const calculateAutoHighpassFilterFreq = (peakFreq_kHz) => {
-    // 根據峰值頻率選擇合適的高通濾波器頻率
-    // 閾值：40, 35, 30 kHz
-    if (peakFreq_kHz >= 40) return 30;
-    if (peakFreq_kHz >= 35) return 25;
-    if (peakFreq_kHz >= 30) return 20;
-    return 0;  // 預設最低值
-  };
-
   // 獨立的 Bat Call 檢測分析函數（只更新參數顯示，不重新計算 Power Spectrum）
   const updateBatCallAnalysis = async (peakFreq) => {
     try {
@@ -287,7 +278,7 @@ export function showCallAnalysisPopup({
       // 2025: Auto Mode 時，根據peakFreq計算自動高通濾波器頻率
       // 使用原始spectrum的peakFreq（未濾波）
       if (batCallConfig.highpassFilterFreq_kHz_isAuto === true && peakFreq) {
-        batCallConfig.highpassFilterFreq_kHz = calculateAutoHighpassFilterFreq(peakFreq);
+        batCallConfig.highpassFilterFreq_kHz = detector.calculateAutoHighpassFilterFreq(peakFreq);
       }
       
       // 同步detector.config以確保使用最新的batCallConfig值
@@ -299,7 +290,7 @@ export function showCallAnalysisPopup({
       // 如果啟用 Highpass Filter，在進行 call measurement 之前應用濾波
       if (batCallConfig.enableHighpassFilter) {
         const highpassFreq_Hz = batCallConfig.highpassFilterFreq_kHz * 1000;
-        audioDataForDetection = applyButterworthHighpassFilter(audioDataForDetection, highpassFreq_Hz, sampleRate, batCallConfig.highpassFilterOrder);
+        audioDataForDetection = detector.applyHighpassFilter(audioDataForDetection, highpassFreq_Hz, sampleRate, batCallConfig.highpassFilterOrder);
       }
 
       // 為了確保 SNR 計算正確，需要使用原始（未濾波）的音頻數據
@@ -684,7 +675,7 @@ export function showCallAnalysisPopup({
     // 2025: Auto Mode 時，根據原始 spectrum 的 peakFreq 計算自動高通濾波器頻率
     // 這與 SNR 計算邏輯一致，都使用原始（未濾波）音頻的峰值頻率
     if (batCallConfig.highpassFilterFreq_kHz_isAuto === true && lastPeakFreq) {
-      batCallConfig.highpassFilterFreq_kHz = calculateAutoHighpassFilterFreq(lastPeakFreq);
+      batCallConfig.highpassFilterFreq_kHz = detector.calculateAutoHighpassFilterFreq(lastPeakFreq);
     }
     
     // 更新 detector 配置
@@ -1754,106 +1745,5 @@ function updateParametersDisplay(popup, batCall, peakFreqFallback = null) {
     if (lowFreqTimeEl) lowFreqTimeEl.textContent = '-';
     if (peakFreqTimeEl) peakFreqTimeEl.textContent = '-';
     if (charFreqTimeEl) charFreqTimeEl.textContent = '-';
-  }
-}
-
-/**
- * 應用 Butterworth Highpass Filter (支持 order 1-8)
- * @param {Float32Array} audioData - 輸入音頻數據
- * @param {number} filterFreq_Hz - 濾波器截止頻率 (Hz)
- * @param {number} sampleRate - 採樣率 (Hz)
- * @param {number} order - 濾波器階數 (1-8，預設 2)
- * @returns {Float32Array} 濾波後的音頻數據
- */
-export function applyButterworthHighpassFilter(audioData, filterFreq_Hz, sampleRate, order = 2) {
-  if (!audioData || audioData.length === 0 || filterFreq_Hz <= 0) {
-    return audioData;
-  }
-
-  // 限制 order 在 1-8 範圍內
-  const clampedOrder = Math.max(1, Math.min(8, Math.round(order)));
-
-  // 計算歸一化頻率 (0 to 1, 1 = Nyquist 頻率)
-  const nyquistFreq = sampleRate / 2;
-  const normalizedFreq = filterFreq_Hz / nyquistFreq;
-
-  // 確保歸一化頻率有效
-  if (normalizedFreq >= 1) {
-    return audioData;
-  }
-
-  // 計算 Butterworth 濾波器係數
-  const wc = Math.tan(Math.PI * normalizedFreq / 2);
-  const wc2 = wc * wc;
-  
-  // 應用級聯的濾波器級數
-  let filtered = new Float32Array(audioData);
-  
-  // 對於 order 1 和 2，直接應用
-  // 對於 order > 2，級聯多個 2 階濾波器和 1 個 1 階濾波器（若需要）
-  const numOf2ndOrder = Math.floor(clampedOrder / 2);
-  const has1stOrder = (clampedOrder % 2) === 1;
-  
-  // 應用多個 2nd order 級聯
-  for (let stage = 0; stage < numOf2ndOrder; stage++) {
-    filtered = applyButterworthStage(filtered, wc, 2);
-  }
-  
-  // 如果階數是奇數，應用一個 1st order 級聯
-  if (has1stOrder) {
-    filtered = applyButterworthStage(filtered, wc, 1);
-  }
-  
-  return filtered;
-}
-
-/**
- * 應用特定階數的 Butterworth Highpass Filter 級
- */
-function applyButterworthStage(audioData, wc, order) {
-  const wc2 = wc * wc;
-  
-  if (order === 1) {
-    // 1st order highpass filter
-    const denom = wc + 1;
-    const b0 = 1 / denom;
-    const b1 = -1 / denom;
-    const a1 = (wc - 1) / denom;
-    
-    const result = new Float32Array(audioData.length);
-    let y1 = 0, x1 = 0;
-    
-    for (let i = 0; i < audioData.length; i++) {
-      const x0 = audioData[i];
-      const y0 = b0 * x0 + b1 * x1 - a1 * y1;
-      result[i] = y0;
-      x1 = x0;
-      y1 = y0;
-    }
-    return result;
-  } else {
-    // 2nd order Butterworth highpass filter
-    const sqrt2wc = Math.sqrt(2) * wc;
-    const denom = wc2 + sqrt2wc + 1;
-    
-    const b0 = 1 / denom;
-    const b1 = -2 / denom;
-    const b2 = 1 / denom;
-    const a1 = (2 * (wc2 - 1)) / denom;
-    const a2 = (wc2 - sqrt2wc + 1) / denom;
-    
-    const result = new Float32Array(audioData.length);
-    let y1 = 0, y2 = 0, x1 = 0, x2 = 0;
-    
-    for (let i = 0; i < audioData.length; i++) {
-      const x0 = audioData[i];
-      const y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
-      result[i] = y0;
-      x2 = x1;
-      x1 = x0;
-      y2 = y1;
-      y1 = y0;
-    }
-    return result;
   }
 }

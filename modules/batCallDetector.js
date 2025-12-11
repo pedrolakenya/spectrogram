@@ -3155,6 +3155,125 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
     
     return call;
   }
+
+  /**
+   * Calculate optimal highpass filter frequency based on peak frequency
+   * @param {number} peakFreq_kHz - Peak frequency in kHz
+   * @returns {number} Optimal highpass filter frequency in kHz
+   */
+  calculateAutoHighpassFilterFreq(peakFreq_kHz) {
+    // Select appropriate highpass filter frequency based on peak frequency
+    // Thresholds: 40, 35, 30 kHz
+    if (peakFreq_kHz >= 40) return 30;
+    if (peakFreq_kHz >= 35) return 25;
+    if (peakFreq_kHz >= 30) return 20;
+    return 0;  // Default minimum value
+  }
+
+  /**
+   * Apply Butterworth Highpass Filter to audio data
+   * @param {Float32Array} audioData - Audio samples
+   * @param {number} filterFreq_Hz - Filter frequency in Hz
+   * @param {number} sampleRate - Sample rate in Hz
+   * @param {number} order - Filter order (default 2)
+   * @returns {Float32Array} Filtered audio data
+   */
+  applyHighpassFilter(audioData, filterFreq_Hz, sampleRate, order = 2) {
+    if (!audioData || audioData.length === 0 || filterFreq_Hz <= 0) {
+      return audioData;
+    }
+
+    // Clamp order to valid range 1-8
+    const clampedOrder = Math.max(1, Math.min(8, Math.round(order)));
+
+    // Calculate normalized frequency (0 to 1, 1 = Nyquist frequency)
+    const nyquistFreq = sampleRate / 2;
+    const normalizedFreq = filterFreq_Hz / nyquistFreq;
+
+    // Ensure normalized frequency is valid
+    if (normalizedFreq >= 1) {
+      return audioData;
+    }
+
+    // Calculate Butterworth filter coefficients
+    const wc = Math.tan(Math.PI * normalizedFreq / 2);
+    
+    // Apply cascaded filter stages
+    let filtered = new Float32Array(audioData);
+    
+    // For order 1 and 2, apply directly
+    // For order > 2, cascade multiple 2nd-order stages and 1 1st-order stage if needed
+    const numOf2ndOrder = Math.floor(clampedOrder / 2);
+    const has1stOrder = (clampedOrder % 2) === 1;
+    
+    // Apply multiple 2nd order cascaded stages
+    for (let stage = 0; stage < numOf2ndOrder; stage++) {
+      filtered = this._applyButterworthStage(filtered, wc, 2);
+    }
+    
+    // If order is odd, apply one 1st order stage
+    if (has1stOrder) {
+      filtered = this._applyButterworthStage(filtered, wc, 1);
+    }
+    
+    return filtered;
+  }
+
+  /**
+   * Apply a specific order Butterworth Highpass Filter stage
+   * @private
+   * @param {Float32Array} audioData - Audio samples
+   * @param {number} wc - Normalized cutoff frequency coefficient
+   * @param {number} order - Filter stage order (1 or 2)
+   * @returns {Float32Array} Filtered audio data
+   */
+  _applyButterworthStage(audioData, wc, order) {
+    const wc2 = wc * wc;
+    
+    if (order === 1) {
+      // 1st order highpass filter
+      const denom = wc + 1;
+      const b0 = 1 / denom;
+      const b1 = -1 / denom;
+      const a1 = (wc - 1) / denom;
+      
+      const result = new Float32Array(audioData.length);
+      let y1 = 0, x1 = 0;
+      
+      for (let i = 0; i < audioData.length; i++) {
+        const x0 = audioData[i];
+        const y0 = b0 * x0 + b1 * x1 - a1 * y1;
+        result[i] = y0;
+        x1 = x0;
+        y1 = y0;
+      }
+      return result;
+    } else {
+      // 2nd order Butterworth highpass filter
+      const sqrt2wc = Math.sqrt(2) * wc;
+      const denom = wc2 + sqrt2wc + 1;
+      
+      const b0 = 1 / denom;
+      const b1 = -2 / denom;
+      const b2 = 1 / denom;
+      const a1 = (2 * (wc2 - 1)) / denom;
+      const a2 = (wc2 - sqrt2wc + 1) / denom;
+      
+      const result = new Float32Array(audioData.length);
+      let y1 = 0, y2 = 0, x1 = 0, x2 = 0;
+      
+      for (let i = 0; i < audioData.length; i++) {
+        const x0 = audioData[i];
+        const y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+        result[i] = y0;
+        x2 = x1;
+        x1 = x0;
+        y2 = y1;
+        y1 = y0;
+      }
+      return result;
+    }
+  }
 }
 
 /**
