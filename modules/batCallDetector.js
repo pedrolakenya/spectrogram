@@ -2179,10 +2179,6 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
     // 時間點說明：
     // Start Frequency 總是在第一幀（frame 0），時間 = 0 ms
     // 但 Start Frequency 的值可能等於 High Frequency（規則 b）
-    // 
-    // 2025 低頻 Noise 保護機制：
-    // 若 Peak Frequency ≥ 60 kHz，則 Start Frequency 不能 ≤ 40 kHz
-    // 在掃描時忽略 40 kHz 或以下的 bin，防止誤判低頻 noise 為 Start Frequency
     // ============================================================
     const firstFramePower = spectrogram[0];
     let startFreq_Hz = null;
@@ -2193,11 +2189,7 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
     // 使用 -24dB 閾值計算 Start Frequency（無論是否 Auto Mode）
     const threshold_24dB = peakPower_dB - 24;
     
-    // 2025: 低頻 Noise 保護閾值
-    const LOW_FREQ_NOISE_THRESHOLD_kHz = 40;  // kHz - 低於此頻率的 bin 在某些情況下應被忽略
-    const HIGH_PEAK_THRESHOLD_kHz = 60;       // kHz - Peak >= 此值時啟動低頻保護
     const peakFreqInKHz = peakFreq_Hz / 1000; // 將 Peak 頻率轉換為 kHz
-    const shouldIgnoreLowFreqNoise = peakFreqInKHz >= HIGH_PEAK_THRESHOLD_kHz;
     
     // 從低到高掃描，找最低頻率（規則 a）
     for (let binIdx = 0; binIdx < firstFramePower.length; binIdx++) {
@@ -2210,13 +2202,6 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
         if (shouldIgnoreLowFreqNoise && testStartFreq_kHz <= LOW_FREQ_NOISE_THRESHOLD_kHz) {
           // 此 bin 被視為低頻 noise，跳過
           continue;
-        }
-        
-        // 2025 NEW: Apply Highpass Filter Protection
-        // If Highpass Filter is enabled, ignore frequencies below the cutoff
-        // This prevents the detector from picking up filtered-out noise as Start Frequency
-        if (this.config.enableHighpassFilter && testStartFreq_kHz < this.config.highpassFilterFreq_kHz) {
-          continue; // Skip frequencies cut off by the highpass filter
         }
         
         // 檢查是否低於 Peak Frequency（規則 a）
