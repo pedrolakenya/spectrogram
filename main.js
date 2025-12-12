@@ -977,23 +977,17 @@ getWavesurfer().on('decode', () => {
     }
   }
   
-  // 1. Force styles
+  // 1. 強制設定寬度並觸發 Reflow
   container.style.width = '100%';
   wrapper.style.width = '100%';
+  void container.offsetWidth; // Force Reflow
   
-  // 2. Force a Reflow (Optional but recommended safety check)
-  // Reading offsetWidth forces the browser to apply the style changes above immediately
-  void container.offsetWidth; 
-  
-  // 3. Reset Zoom
   zoomControl.resetZoomState();
   
   progressLineElem.style.display = 'none';
   updateProgressLine(0);
 
-  // FIX: Use setTimeout(..., 0) instead of requestAnimationFrame.
-  // This pushes the plugin creation to the end of the event loop, 
-  // ensuring the DOM width is stable and correct (100%) before the plugin calculates overlap.
+  // 2. 使用 setTimeout 確保 Main Thread 空閒
   setTimeout(() => {
       const colorMap = getEffectiveColorMap();
       replacePlugin(
@@ -1001,13 +995,22 @@ getWavesurfer().on('decode', () => {
         spectrogramHeight,
         currentFreqMin,
         currentFreqMax,
-        getOverlapPercent(), // undefined
+        getOverlapPercent(), // 這裡是 undefined (Auto)
         () => {
+            // 這是 onRendered Callback
             renderAxes();
             freqHoverControl?.refreshHover();
             autoIdControl?.updateMarkers();
             updateSpectrogramSettingsText();
             restoreImageEnhancement();
+
+            setTimeout(() => {
+                const plugin = getPlugin();
+                if (plugin) {
+                    plugin.render();
+                    requestAnimationFrame(updateSpectrogramSettingsText);
+                }
+            }, 50);
         },
         currentFftSize,
         currentWindowType,
