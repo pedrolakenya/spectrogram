@@ -1064,7 +1064,14 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
 
     // 根據你的公式：Min + (Range * 0.25)
     // 例如: Min 0, Max 100 -> 0 + (100 * 0.25) = 25
-    const robustNoiseFloor_dB = minDb + (maxDb - minDb) * 0.35;
+    const dynamicRange = maxDb - minDb;
+    const robustNoiseFloor_dB = minDb + dynamicRange * 0.35;
+    
+    console.log('[findOptimalHighFrequencyThreshold] NOISE FLOOR CALCULATION:');
+    console.log(`  Min dB: ${minDb.toFixed(2)}, Max dB: ${maxDb.toFixed(2)}, Range: ${dynamicRange.toFixed(2)}`);
+    console.log(`  Robust Noise Floor: ${minDb.toFixed(2)} + ${dynamicRange.toFixed(2)} * 0.35 = ${robustNoiseFloor_dB.toFixed(2)} dB`);
+    console.log(`  Peak Power (callPeakPower_dB): ${callPeakPower_dB.toFixed(2)} dB`);
+    console.log('');
     
     // Initial search limit: from 0 to peakFrameIdx
     let currentSearchLimitFrame = Math.min(peakFrameIdx, spectrogram.length - 1);
@@ -1189,11 +1196,16 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
           if (jumpDiff > 4.0) {
             // Major jump detected (> 4.0 kHz)
             // NEW LOGIC: Check if current signal is above noise floor
+            console.log(`  [JUMP CHECK] Threshold: ${testThreshold_dB}dB | Freq: ${lastValidFreq_kHz.toFixed(2)} → ${currentHighFreq_kHz.toFixed(2)} kHz (Jump: ${jumpDiff.toFixed(2)} kHz > 4.0)`);
+            console.log(`    Current Power: ${currentHighFreqPower_dB.toFixed(2)} dB | Noise Floor: ${robustNoiseFloor_dB.toFixed(2)} dB | Delta: ${(currentHighFreqPower_dB - robustNoiseFloor_dB).toFixed(2)} dB`);
+            
             if (currentHighFreqPower_dB > robustNoiseFloor_dB) {
               // Signal is above noise floor - this is likely a valid signal transition
               // Ignore the jump and continue
+              console.log(`    ✓ Signal ABOVE noise floor → Continue (valid signal transition)`);
             } else {
               // Signal is at or below noise floor - stop immediately (hit noise)
+              console.log(`    ✗ Signal AT/BELOW noise floor → BREAK (hit noise)`);
               break;
             }
           }
@@ -1270,12 +1282,17 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
         // Additional check: is the current measurement's power above noise floor?
         const currentPower_dB = validMeasurements[i].highFreqPower_dB;
         
+        console.log(`  [ANOMALY CHECK] Index ${i}: Freq ${prevFreq_kHz.toFixed(2)} → ${currFreq_kHz.toFixed(2)} kHz (Diff: ${freqDifference.toFixed(2)} kHz > 2.5)`);
+        console.log(`    Power: ${currentPower_dB !== null ? currentPower_dB.toFixed(2) : 'N/A'} dB | Noise Floor: ${robustNoiseFloor_dB.toFixed(2)} dB`);
+        
         if (currentPower_dB !== null && currentPower_dB <= robustNoiseFloor_dB) {
           // Signal is at or below noise floor - this is a legitimate anomaly
+          console.log(`    ✗ Power AT/BELOW noise floor → ANOMALY DETECTED`);
           isAnomaly = true;
         } else {
           // Signal is above noise floor - treat as valid signal transition
           // Ignore the frequency jump
+          console.log(`    ✓ Power ABOVE noise floor → VALID TRANSITION (ignore jump)`);
           isAnomaly = false;
         }
       }
