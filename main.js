@@ -970,7 +970,6 @@ getWavesurfer().on('ready', () => {
 getWavesurfer().on('decode', () => {
   duration = getWavesurfer().getDuration();
   
-  // (Keep existing buffer length logic...)
   if (selectionExpandMode) {
     const newBufferLength = getWavesurfer()?.getDecodedData()?.length || getWavesurfer()?.backend?.buffer?.length;
     if (newBufferLength) {
@@ -978,24 +977,31 @@ getWavesurfer().on('decode', () => {
     }
   }
   
-  // (Keep zoom reset logic...)
+  // 1. Force styles
   container.style.width = '100%';
   wrapper.style.width = '100%';
+  
+  // 2. Force a Reflow (Optional but recommended safety check)
+  // Reading offsetWidth forces the browser to apply the style changes above immediately
+  void container.offsetWidth; 
+  
+  // 3. Reset Zoom
   zoomControl.resetZoomState();
   
   progressLineElem.style.display = 'none';
   updateProgressLine(0);
 
-  // FIX: Wrap replacePlugin in requestAnimationFrame to ensure DOM width is 100% ready
-  // This ensures the Plugin reads the correct width for its initial auto-overlap calculation.
-  requestAnimationFrame(() => {
+  // FIX: Use setTimeout(..., 0) instead of requestAnimationFrame.
+  // This pushes the plugin creation to the end of the event loop, 
+  // ensuring the DOM width is stable and correct (100%) before the plugin calculates overlap.
+  setTimeout(() => {
       const colorMap = getEffectiveColorMap();
       replacePlugin(
         colorMap,
         spectrogramHeight,
         currentFreqMin,
         currentFreqMax,
-        getOverlapPercent(), // Now returns undefined for 'auto'
+        getOverlapPercent(), // undefined
         () => {
             renderAxes();
             freqHoverControl?.refreshHover();
@@ -1009,7 +1015,7 @@ getWavesurfer().on('decode', () => {
         undefined,
         handleColorMapChange
       );
-  });
+  }, 0);
 });
 
 document.body.addEventListener('touchstart', () => {
