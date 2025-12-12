@@ -1150,16 +1150,6 @@ function updateSpectrogramSettingsText() {
 
 function getOverlapPercent() {
   if (currentOverlap === 'auto') {
-    // BEST OF BOTH WORLDS FIX:
-    // Option: Keep strict sync ONLY for Selection Expansion Mode if deemed critical.
-    // This ensures the cropped buffer is rendered with the strict logic defined in getAutoOverlapPercent().
-    if (typeof selectionExpandMode !== 'undefined' && selectionExpandMode) {
-      return getAutoOverlapPercent();
-    }
-    // For normal viewing (Initial Load), return undefined.
-    // The patched Plugin now handles the "long file" case safely with a 5% safety floor,
-    // preventing artifacts on initial load. Zooming will correctly re-calculate resolution
-    // dynamically without needing full plugin replacement.
     return undefined;
   }
   // Manual overlap handling
