@@ -1087,7 +1087,6 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
     }
     
     const measurements = [];
-    let breakThreshold = null; // Track where we broke due to noise floor
     
     for (const testThreshold_dB of thresholdRange) {
       const highFreqThreshold_dB = stablePeakPower_dB + testThreshold_dB;
@@ -1207,8 +1206,6 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
               // Signal is at or below noise floor - stop immediately (hit noise)
               console.log(`    ✗ Signal AT/BELOW noise floor → BREAK (hit noise)`);
               console.log(`[BREAK POINT] Stopped at threshold ${testThreshold_dB}dB. Last measurement in array: ${measurements.length > 0 ? measurements[measurements.length - 1].threshold + 'dB' : 'N/A'}`);
-              breakThreshold = measurements.length > 0 ? measurements[measurements.length - 1].threshold : -24;
-              console.log(`[BREAK TRACKING] Set breakThreshold = ${breakThreshold}dB`);
               break;
             }
           }
@@ -1310,7 +1307,6 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
           recordedEarlyAnomaly = validMeasurements[i - 1].threshold;
           lastValidThreshold = validMeasurements[i - 1].threshold;
           lastValidMeasurement = validMeasurements[i - 1];
-          console.log(`    ✗ [ANOMALY RECORDED] index ${i}: set recordedEarlyAnomaly = ${recordedEarlyAnomaly}dB`);
         }
       } else {
         if (recordedEarlyAnomaly !== null && firstAnomalyIndex !== -1) {
@@ -1334,12 +1330,9 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
           }
           
           if (hasThreeNormalAfterAnomaly && (afterAnomalyEnd - afterAnomalyStart + 1) >= 3) {
-            console.log(`    ✓ [ANOMALY RECOVERY] index ${i}: clearing recordedEarlyAnomaly`);
             recordedEarlyAnomaly = null;
             firstAnomalyIndex = -1;
           }
-        } else if (!recordedEarlyAnomaly) {
-          console.log(`    ✓ [NORMAL] index ${i}: updating lastValidThreshold to ${validMeasurements[i].threshold}dB`);
         }
         lastValidThreshold = validMeasurements[i].threshold;
         lastValidMeasurement = validMeasurements[i];
@@ -1354,19 +1347,6 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
       optimalThreshold = lastValidThreshold;
       optimalMeasurement = lastValidMeasurement;
       console.log(`\n[ANOMALY RESULT] No anomaly detected, using last valid threshold ${lastValidThreshold}dB`);
-    }
-    
-    // If we broke due to noise floor, override anomaly detection result
-    if (breakThreshold !== null && optimalThreshold !== breakThreshold) {
-      console.log(`\n[BREAK OVERRIDE] Break occurred at ${breakThreshold}dB, overriding anomaly detection choice of ${optimalThreshold}dB`);
-      optimalThreshold = breakThreshold;
-      // Find the measurement for this threshold
-      for (let i = validMeasurements.length - 1; i >= 0; i--) {
-        if (validMeasurements[i].threshold === breakThreshold) {
-          optimalMeasurement = validMeasurements[i];
-          break;
-        }
-      }
     }
     
     console.log(`[FINAL THRESHOLD SELECTION]`);
