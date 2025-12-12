@@ -1045,7 +1045,7 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
     const numBins = firstFramePower.length;
     
     // ============================================================
-    // 2025 NEW: Calculate Robust Noise Floor (35th Percentile)
+    // 2025 NEW: Calculate Robust Noise Floor (50th Percentile)
     // This represents the "pure noise/low signal" baseline to filter false positives
     // ============================================================
     const allPowerValues = [];
@@ -1056,8 +1056,8 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
       }
     }
     allPowerValues.sort((a, b) => a - b);
-    const percentile35Index = Math.floor(allPowerValues.length * 0.35);
-    const robustNoiseFloor_dB = allPowerValues[Math.max(0, percentile35Index)];
+    const percentile50Index = Math.floor(allPowerValues.length * 0.50);
+    const robustNoiseFloor_dB = allPowerValues[Math.max(0, percentile50Index)];
     
     // Initial search limit: from 0 to peakFrameIdx
     let currentSearchLimitFrame = Math.min(peakFrameIdx, spectrogram.length - 1);
