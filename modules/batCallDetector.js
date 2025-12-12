@@ -2223,6 +2223,13 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
     let highFreqBinIdx = 0;
     let highFreqFrameIdx = -1; // 2025: Use -1 to indicate not found yet
     
+    // [FIX] Sync local variables from Auto Mode results if we are skipping Step 2
+    if (skipStep2HighFrequency) {
+      highFreq_Hz = safeHighFreq_Hz;
+      highFreqBinIdx = safeHighFreqBinIdx;
+      highFreqFrameIdx = safeHighFreqFrameIdx;
+    }
+    
     if (!skipStep2HighFrequency) {
       // 2025 v2 CRITICAL CHANGE: 使用 AUTO MODE 返回的 finalSearchLimitFrame
       // 如果在 AUTO MODE 中，使用其返回的搜尋範圍限制
