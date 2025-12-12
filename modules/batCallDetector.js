@@ -1045,19 +1045,26 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
     const numBins = firstFramePower.length;
     
     // ============================================================
-    // 2025 NEW: Calculate Robust Noise Floor (50th Percentile)
+    // 2025 NEW: Calculate Robust Noise Floor (25th Percentile)
     // This represents the "pure noise/low signal" baseline to filter false positives
     // ============================================================
-    const allPowerValues = [];
-    for (let frameIdx = 0; frameIdx < spectrogram.length; frameIdx++) {
-      const framePower = spectrogram[frameIdx];
-      for (let binIdx = 0; binIdx < framePower.length; binIdx++) {
-        allPowerValues.push(framePower[binIdx]);
+    // 1. Calculate Dynamic Range Noise Floor
+    let minDb = Infinity;
+    let maxDb = -Infinity;
+
+    // 遍歷整個 spectrogram 找最大最小值 (比 sort 快)
+    for (let f = 0; f < spectrogram.length; f++) {
+      const frame = spectrogram[f];
+      for (let b = 0; b < frame.length; b++) {
+        const val = frame[b];
+        if (val < minDb) minDb = val;
+        if (val > maxDb) maxDb = val;
       }
     }
-    allPowerValues.sort((a, b) => a - b);
-    const percentile50Index = Math.floor(allPowerValues.length * 0.50);
-    const robustNoiseFloor_dB = allPowerValues[Math.max(0, percentile50Index)];
+
+    // 根據你的公式：Min + (Range * 0.25)
+    // 例如: Min 0, Max 100 -> 0 + (100 * 0.25) = 25
+    const robustNoiseFloor_dB = minDb + (maxDb - minDb) * 0.25;
     
     // Initial search limit: from 0 to peakFrameIdx
     let currentSearchLimitFrame = Math.min(peakFrameIdx, spectrogram.length - 1);
