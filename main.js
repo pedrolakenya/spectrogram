@@ -970,47 +970,46 @@ getWavesurfer().on('ready', () => {
 getWavesurfer().on('decode', () => {
   duration = getWavesurfer().getDuration();
   
-  // ✅ 在 selection expansion mode 時，從 wavesurfer backend 獲取新的 buffer 長度
+  // (Keep existing buffer length logic...)
   if (selectionExpandMode) {
-    // Try to get decoded data length from wavesurfer; fallback to backend buffer
     const newBufferLength = getWavesurfer()?.getDecodedData()?.length || getWavesurfer()?.backend?.buffer?.length;
     if (newBufferLength) {
       currentAudioBufferLength = newBufferLength;
     }
   }
   
-  // ✅ 強制重置所有寬度，確保不受先前 zoom 影響
+  // (Keep zoom reset logic...)
   container.style.width = '100%';
   wrapper.style.width = '100%';
-  
-  // ✅ 調用完整 reset，會基於 100% 寬度計算 minZoomLevel
   zoomControl.resetZoomState();
   
   progressLineElem.style.display = 'none';
   updateProgressLine(0);
 
-  // FIX: Force plugin replacement to recalculate 'auto' overlap based on new buffer length
-  const colorMap = getEffectiveColorMap();
-  replacePlugin(
-    colorMap,
-    spectrogramHeight,
-    currentFreqMin,
-    currentFreqMax,
-    getOverlapPercent(), // This now calculates based on the NEW buffer length
-    () => {
-        // Callback after render
-        renderAxes();
-        freqHoverControl?.refreshHover();
-        autoIdControl?.updateMarkers();
-        updateSpectrogramSettingsText();
-        restoreImageEnhancement();
-    },
-    currentFftSize,
-    currentWindowType,
-    undefined,
-    undefined,
-    handleColorMapChange
-  );
+  // FIX: Wrap replacePlugin in requestAnimationFrame to ensure DOM width is 100% ready
+  // This ensures the Plugin reads the correct width for its initial auto-overlap calculation.
+  requestAnimationFrame(() => {
+      const colorMap = getEffectiveColorMap();
+      replacePlugin(
+        colorMap,
+        spectrogramHeight,
+        currentFreqMin,
+        currentFreqMax,
+        getOverlapPercent(), // Now returns undefined for 'auto'
+        () => {
+            renderAxes();
+            freqHoverControl?.refreshHover();
+            autoIdControl?.updateMarkers();
+            updateSpectrogramSettingsText();
+            restoreImageEnhancement();
+        },
+        currentFftSize,
+        currentWindowType,
+        undefined,
+        undefined,
+        handleColorMapChange
+      );
+  });
 });
 
 document.body.addEventListener('touchstart', () => {
