@@ -429,11 +429,11 @@ export function initFrequencyHover({
   // 改為雙擊左鍵 (dblclick) 創建/刪除 persistent line
 // 改為 Ctrl + 右鍵 (contextmenu) 創建/刪除 persistent line
   viewer.addEventListener('contextmenu', (e) => {
-    // 1. 必須按住 Ctrl 鍵才觸發，否則允許正常的右鍵行為
-    if (!e.ctrlKey) return;
-
-    // 2. 阻止瀏覽器預設右鍵菜單
+//  1. 第一行直接阻止預設行為：永遠不顯示瀏覽器右鍵菜單
     e.preventDefault();
+
+    // 2. 接著檢查 Ctrl：如果沒有按住 Ctrl，就此停止（不執行畫線功能，但菜單已被阻止）
+    if (!e.ctrlKey) return;
 
     // 如果點擊在 selection area 上，不要顯示 persistent-line，直接返回
     if (e.target.closest('.selection-rect')) {
