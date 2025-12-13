@@ -1379,7 +1379,7 @@ input.tag-button.editing {
 /* === Map Popup === */
 .map-popup {
   position: absolute;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -1413,7 +1413,7 @@ input.tag-button.editing {
   position: relative;
   height: 30px;
   line-height: 30px;
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255);
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
