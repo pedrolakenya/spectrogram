@@ -1696,7 +1696,7 @@ window.addEventListener('resize', () => {
     if (autoIdControl) autoIdControl.updateMarkers();
     
     updateSpectrogramSettingsText();
-  }, 100); 
+  }, 30); 
 });
 
 // Warn user before closing the tab/window so they must confirm.
