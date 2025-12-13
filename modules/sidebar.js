@@ -157,8 +157,9 @@ export function initSidebar({ onFileSelected } = {}) {
       });
   
       if (index === currentIndex) {
-        li.style.fontWeight = 'bold';
-        li.style.color = '#007bff';
+
+        li.classList.add('active'); 
+        
         activeItem = li;
       }
   
