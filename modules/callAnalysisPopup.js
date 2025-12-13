@@ -1432,7 +1432,7 @@ function createPopupWindow() {
         // 展開 - 移除 display 以恢復 CSS 中的 flex
         controlPanel.style.removeProperty('display');
         batCallControlPanel.style.removeProperty('display');
-        popup.style.height = '885px';
+        popup.style.height = '880px';
         settingBtn.classList.add('active');
       } else {
         // 隱藏

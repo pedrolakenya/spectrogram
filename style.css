@@ -52,7 +52,7 @@ html, body {
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: 'Noto Sans HK', sans-serif;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Disable text selection globally */
@@ -309,7 +309,7 @@ input[type="range"] {
   border-radius: 3px;
   margin: 0 6px;
   outline: none;
-  transition: background 0.2s;
+  transition: background 0.3s;
   vertical-align: middle;
 }
 input[type="range"]::-webkit-slider-thumb,
@@ -364,7 +364,7 @@ input[type="file"] {
   background-color: var(--input-bg);
   color: var(--text-primary);
   cursor: text;
-  transition: background 0.2s;
+  transition: background 0.3s;
 }
 input[type="file"]:hover {
   background-color: var(--bg-tertiary);
@@ -378,7 +378,7 @@ input[type="file"]:hover {
   border: 1px solid #bbb;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s, box-shadow 0.2s;
+  transition: background-color 0.3s, box-shadow 0.3s;
   vertical-align: middle;
 }
 .flat-icon-button:hover {
@@ -451,7 +451,7 @@ input[type="file"]:hover {
 /* === Tooltip === */
 .draggable-tooltip {
   border-radius: 5px;
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow 0.3s ease;
 }
 
 .draggable-tooltip:hover {
@@ -472,7 +472,7 @@ input[type="file"]:hover {
   z-index: 25;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.3s ease;
 }
 
 .selection-btn-group i {
@@ -485,7 +485,7 @@ input[type="file"]:hover {
   background: #fff;
   border-radius: 50%;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.3s ease;
 }
 
 .selection-btn-group i:hover {
@@ -540,7 +540,7 @@ input[type="file"]:hover {
   font-size: 13px;
   flex-shrink: 0;
   box-sizing: border-box;
-  transition: border-right 0.2s, background-color 0.2s, color 0.2s, width 0.2s ease, opacity 0.2s ease;
+  transition: border-right 0.3s, background-color 0.3s, color 0.3s, width 0.3s ease, opacity 0.3s ease;
   overflow: hidden;
   background-color: var(--sidebar-bg);
   color: var(--text-primary);
@@ -567,7 +567,7 @@ input[type="file"]:hover {
   height: 100vh;
   max-height: calc(100vh - 480px);
   overflow-y: auto;
-  transition: max-height 0.2s ease;
+  transition: max-height 0.3s ease;
 }
 
 #Metadata {
@@ -578,7 +578,7 @@ input[type="file"]:hover {
   background-color: var(--bg-tertiary);
   border-radius: 8px;
   box-sizing: border-box;
-  transition: background-color 0.2s, color 0.2s, height 0.2s ease;
+  transition: background-color 0.3s, color 0.3s, height 0.3s ease;
   color: var(--text-primary);
 }
 
@@ -594,7 +594,7 @@ input[type="file"]:hover {
   padding: 0;
   height:310px;
   overflow-x: auto;
-  transition: height 0.2s ease;
+  transition: height 0.3s ease;
   word-break: break-word;
   font-family: 'Noto Sans HK', sans-serif;
   font-size: 12px;
@@ -652,7 +652,7 @@ input[type="file"]:hover {
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease, top 0.2s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease, top 0.3s ease;
   overflow-x: auto;
   z-index: 100;
 }
@@ -694,7 +694,7 @@ input[type="range"]#peakThresholdSlider {
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
   overflow-x: auto;
 }
 
@@ -727,7 +727,7 @@ input[type="range"]#peakThresholdSlider {
   border: none;
   border-radius: 20px;
   cursor: pointer;
-  transition: background-color 0.2s, color 0,2s;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 #tool-bar .toolbar-button:hover {
@@ -790,7 +790,7 @@ input[type="range"]#peakThresholdSlider {
   padding: 2px 6px;
   text-align: center;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.3s ease;
 }
 #auto-id-panel .autoid-input:hover {
   background-color: #f0f0f0;
@@ -954,7 +954,7 @@ input[type="range"]#peakThresholdSlider {
   white-space: nowrap;
   pointer-events: auto;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.3s ease;
   z-index: 34;
   font-size: 12px;
   font-family: 'Noto Sans HK', sans-serif;
@@ -1005,7 +1005,7 @@ body.markers-disabled .freq-marker {
   justify-content: center;
   padding: 0;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.3s;
   position: relative;
 }
 
@@ -1058,8 +1058,8 @@ body.dark-mode .sidebar-button {
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
-  transition: width 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease,
-              padding 0.2s ease, border-width 0.2s ease;
+  transition: width 0.3s ease, margin-left 0.3s ease, opacity 0.3s ease,
+              padding 0.3s ease, border-width 0.3s ease;
   color: var(--text-primary);
 }
 
@@ -1086,6 +1086,7 @@ body.dark-mode .sidebar-button {
   white-space: nowrap;
   font-size: 14px;
   color: var(--text-primary);
+  transition: background-color 0.3s, color 0.3s;
 }
 
 .file-path-display i {
@@ -1117,7 +1118,7 @@ body.dark-mode .sidebar-button {
   justify-content: center;
   z-index: 99;
   pointer-events: none;
-  transition: background-color 0.2s;
+  transition: background-color 0.3s;
 }
 
 #map-drop-overlay {
@@ -1226,7 +1227,7 @@ body.tag-mode-active #tag-panel {
 }
 
 #whole-spectrogram {
-  transition: padding-left 0.2s ease;
+  transition: padding-left 0.3s ease;
 }
 
 body.tag-mode-active #whole-spectrogram {
@@ -1276,7 +1277,7 @@ input.tag-button {
   text-align: center;
   cursor: pointer;
   padding: 0;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Hover effect for tag buttons */
@@ -1353,7 +1354,7 @@ input.tag-button.editing {
   border: 1px solid var(--border-color);
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.3s;
   position: relative;
   font-family: 'Noto Sans HK', sans-serif;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -1453,7 +1454,7 @@ input.tag-button.editing {
   user-select: none;
   overflow: hidden;
   opacity: 1;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.3s ease;
   color: var(--text-primary);
 }
 
@@ -1603,7 +1604,7 @@ input.tag-button.editing {
   border: 1px solid black;
   background-color: rgba(0,0,0,0.05);
   z-index: 20;
-  transition: background-color 0.2s;
+  transition: background-color 0.3s;
 }
 
 .selection-rect:hover {
@@ -1677,7 +1678,7 @@ input.tag-button.editing {
   top: 2px;
   right: 4px;
   cursor: pointer;
-  transition: color 0.2s, font-weight 0.2s;
+  transition: color 0.3s, font-weight 0.3s;
 }
 
 .tooltip-close-btn:hover {
@@ -1916,7 +1917,7 @@ input.tag-button.editing {
   max-width: 0;
   opacity: 0;
   overflow: hidden;
-  transition: max-width 0.2s ease, opacity 0.2s ease;
+  transition: max-width 0.3s ease, opacity 0.3s ease;
 }
 
 .leaflet-route-toggle-control .route-button-group.visible {
@@ -1970,7 +1971,7 @@ input.tag-button.editing {
   max-width: 0;
   opacity: 0;
   overflow: hidden;
-  transition: max-width 0.2s ease, opacity 0.2s ease;
+  transition: max-width 0.3s ease, opacity 0.3s ease;
 }
 
 .leaflet-text-toggle-control .text-button-group.visible {
@@ -2233,14 +2234,14 @@ input.tag-button.editing {
   font-family: 'Noto Sans HK', sans-serif;
   font-size: 24px;
   color: var(--text-secondary);
-  transition: color 0.2s;
+  transition: color 0.3s;
 }
 
 .drop-icon {
   font-size: 60px;
   color: var(--text-secondary);
   margin-bottom: 10px;
-  transition: color 0.2s;
+  transition: color 0.3s;
 }
 
 #spectrogram-only {
@@ -2296,7 +2297,7 @@ input.tag-button.editing {
   display: none;
   width: 0;
   overflow: hidden;
-  transition: width 0.2s ease;
+  transition: width 0.3s ease;
 }
 #stopBtn.show {
   display: inline-flex;
@@ -2383,7 +2384,7 @@ input.tag-button.editing {
   font-size: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   cursor: default;
-  transition: transform 0.2s ease;
+  transition: transform 0.3s ease;
   opacity: 0.8;
   user-select: none;
   -webkit-user-select: none;
@@ -2444,10 +2445,10 @@ input.tag-button.editing {
 .power-spectrum-controls {
   padding: 5px;
   margin: 5px 5px 0px 5px;
-  background: #fafafa;
+  background: var(--bg-tertiary);
   display: flex;
   border-radius: 5px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   gap: 10px;
   align-items: center;
   justify-content: center;
@@ -2455,7 +2456,7 @@ input.tag-button.editing {
   max-height: 100px;
   opacity: 1;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, background 0.3s, border 0.3s;
 }
 
 .power-spectrum-controls[style*="display: none"] {
@@ -2477,18 +2478,20 @@ input.tag-button.editing {
   font-weight: normal;
   white-space: nowrap;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   font-size: 11px;  
+  transition: color 0.3s;
 }
 
 .power-spectrum-controls select,
 .power-spectrum-controls input[type="number"] {
   padding: 4px 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color);
   border-radius: 3px;
   font-size: 14px;
   cursor: text;
-  background: white;
+  background: var(--input-bg);
+  transition: background 0.3s, border 0.3s, color 0.3s;
 }
 
 .power-spectrum-controls input[type="number"] {
@@ -2507,11 +2510,12 @@ input.tag-button.editing {
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1), border 0.3s;
 }
 
 .power-spectrum-popup.modal-popup {
-  background: white;
+  background: var(--bg-primary);
+  transition: background 0.3s, border 0.3s;
 }
 
 .power-spectrum-canvas-container {
@@ -2561,14 +2565,14 @@ input.tag-button.editing {
 /* === Bat Call Parameters Panel === */
 .bat-call-parameters-panel {
   padding: 5px;
-  background: white;
+  background: var(--bg-tertiary);
   border-radius: 5px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   margin: 5px 5px 5px 5px;
   max-height: 250px;  /* 2025: Merged frequency and time parameters table - reduced from 300px */
   font-size: 12px;
   font-family: 'Noto Sans HK', 'Courier New', monospace;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, background 0.3s, border 0.3s;
 }
 
 .bat-call-parameters-table {
@@ -2589,7 +2593,7 @@ input.tag-button.editing {
   text-align: right;
   font-weight: 600;
   font-size: 12px;
-  color: #333;
+  color: var(--text-primary);
   width: 45%;
 }
 
@@ -2602,7 +2606,7 @@ input.tag-button.editing {
 
 .param-unit {
   text-align: left;
-  color: #666;
+  color: var(--text-secondary);
   padding-left: 4px;
   font-size: 12px;
   width: 20%;
@@ -2650,7 +2654,7 @@ input.tag-button.editing {
 .bat-call-controls {
   padding: 5px;
   margin: 0px 5px 5px 5px;
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
   display: flex;
   border-radius: 5px;
   border: 1px solid var(--border-color);
@@ -2763,7 +2767,7 @@ input.tag-button.editing {
   justify-content: center;
   align-items: center;
   z-index: 100;
-  transition: color 0.2s ease, transform 0.2s ease;
+  transition: color 0.3s ease, transform 0.3s ease;
 }
 
 .power-spectrum-settings-btn:hover {
@@ -2783,7 +2787,7 @@ input.tag-button.editing {
   stroke-linejoin: round;
   
   /* 可選：添加過渡動畫以平滑更新 */
-  transition: d 0.2s ease-in-out;
+  transition: d 0.3s ease-in-out;
 }
 
 /* 峰值標記點樣式 */
