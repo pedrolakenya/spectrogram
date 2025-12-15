@@ -268,10 +268,11 @@ export class BatCallDetector {
     }
   }
 
-   /**
+/**
    * 2025 ENHANCEMENT: Calculate RMS-based SNR from Spectrogram
    * Updated Logic:
-   * 1. Signal Region: Inside call (HighFreq Frame to LowFreq Frame), within [LowFreq, HighFreq]
+   * 1. Signal Region: Inside call (StartFreq Frame to LowFreq Frame), within [LowFreq, HighFreq]
+   * (Updated: Start time is now StartFreqFrameIdx, not HighFreqFrameIdx)
    * 2. Signal Threshold: Min_dB + (Max_dB - Min_dB) * 0.25 (Dynamic Range Thresholding)
    * 3. Signal Mean: Average linear power of bins > Threshold
    * 4. Noise: Calculated from external "Noise Spectrogram" (Last 10ms of file) or fallback
@@ -295,10 +296,10 @@ export class BatCallDetector {
       return result;
     }
     
-    if (call.highFreqFrameIdx === undefined || call.highFreqFrameIdx === null) {
-      result.debug.reason = 'highFreqFrameIdx not set';
-      return result;
-    }
+    // Check if startFreqFrameIdx is available (it should be 0 or calculated)
+    const startTimeIdx = (call.startFreqFrameIdx !== undefined && call.startFreqFrameIdx !== null) 
+      ? call.startFreqFrameIdx 
+      : 0; // Fallback to 0 if not set (Start Freq is usually frame 0)
     
     // 1. Calculate SIGNAL Power (From Call Region) with Dynamic Thresholding
     // =====================================================================
@@ -307,14 +308,16 @@ export class BatCallDetector {
     
     // Store ranges for logging
     result.frequencyRange_kHz = { lowFreq: call.lowFreq_kHz, highFreq: call.highFreq_kHz };
-    result.timeRange_frames = { start: call.highFreqFrameIdx, end: endFrameIdx_forLowFreq, duration: endFrameIdx_forLowFreq - call.highFreqFrameIdx + 1 };
+    // [UPDATED] Log correct start frame
+    result.timeRange_frames = { start: startTimeIdx, end: endFrameIdx_forLowFreq, duration: endFrameIdx_forLowFreq - startTimeIdx + 1 };
     
     // STEP 1-A: Find Max and Min Energy within the Signal Region
     let signalMaxDb = -Infinity;
     let signalMinDb = Infinity;
     let hasSignalBins = false;
     
-    for (let timeIdx = call.highFreqFrameIdx; timeIdx <= endFrameIdx_forLowFreq; timeIdx++) {
+    // [UPDATED] Loop starts from startTimeIdx
+    for (let timeIdx = startTimeIdx; timeIdx <= endFrameIdx_forLowFreq; timeIdx++) {
       if (timeIdx >= spectrogram.length) break;
       const frame = spectrogram[timeIdx];
       
@@ -346,7 +349,8 @@ export class BatCallDetector {
     let signalPowerSum_linear = 0;
     let signalCount = 0;
     
-    for (let timeIdx = call.highFreqFrameIdx; timeIdx <= endFrameIdx_forLowFreq; timeIdx++) {
+    // [UPDATED] Loop starts from startTimeIdx
+    for (let timeIdx = startTimeIdx; timeIdx <= endFrameIdx_forLowFreq; timeIdx++) {
       if (timeIdx >= spectrogram.length) break;
       const frame = spectrogram[timeIdx];
       
@@ -403,7 +407,9 @@ export class BatCallDetector {
         const frame = spectrogram[timeIdx];
         for (let freqIdx = 0; freqIdx < frame.length; freqIdx++) {
           const freqHz = freqBins[freqIdx];
-          const isInSignalTime = (timeIdx >= call.highFreqFrameIdx) && (timeIdx <= endFrameIdx_forLowFreq);
+          
+          // [UPDATED] Exclude signal region based on new startTimeIdx
+          const isInSignalTime = (timeIdx >= startTimeIdx) && (timeIdx <= endFrameIdx_forLowFreq);
           const isInSignalFreq = (freqHz >= signalFreq_Hz_low) && (freqHz <= signalFreq_Hz_high);
           
           if (!(isInSignalTime && isInSignalFreq)) {
