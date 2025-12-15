@@ -401,6 +401,8 @@ export class BatCallDetector {
       }
     } else {
       // Fallback: Use non-signal bins in the current spectrogram
+      // NOTE: Since we passed call.spectrogram, these are bins outside the call frequencies
+      // but inside the call time duration. This is a valid local noise floor.
       result.mechanism = 'RMS-based (Fallback Internal)';
       
       for (let timeIdx = 0; timeIdx < spectrogram.length; timeIdx++) {
@@ -581,8 +583,7 @@ export class BatCallDetector {
   /**
    * Detect all bat calls in audio selection
    * Returns: array of BatCall objects
-   * 
-   * @param {Float32Array} audioData - Audio samples
+   * * @param {Float32Array} audioData - Audio samples
    * @param {number} sampleRate - Sample rate in Hz
    * @param {number} flowKHz - Low frequency bound in kHz
    * @param {number} fhighKHz - High frequency bound in kHz
@@ -648,11 +649,6 @@ export class BatCallDetector {
     // ============================================================
     // 額外驗證：過濾誤檢測的噪音段
     // ============================================================
-    // Validation criteria:
-    // 1. Peak power should be significantly above noise baseline (SNR check)
-    // 2. Bandwidth should be reasonable (not too wide like noise)
-    // 3. Power concentration should be high (not scattered like noise)
-    // ============================================================
     
     // Collect all power values for percentile calculation
     const allPowerValues = [];
@@ -667,24 +663,10 @@ export class BatCallDetector {
     // Sort to calculate percentiles
     allPowerValues.sort((a, b) => a - b);
     
-    // Calculate noise baseline using 25th percentile (robust to call signals)
-    // This represents the typical background noise floor
-    // The lowest 25% of energy bins = pure noise/low signal
     const percentile25Index = Math.floor(allPowerValues.length * 0.25);
     const noiseFloor_dB = allPowerValues[Math.max(0, percentile25Index)];
-    
-    // For comparison: also use median (50th percentile) as secondary baseline
-    const medianIndex = Math.floor(allPowerValues.length * 0.5);
-    const medianPower_dB = allPowerValues[Math.max(0, medianIndex)];
-    
-    // Use the higher of noise floor or a minimum threshold to ensure reasonable baseline
-    // Minimum baseline: -80 dB (typical for quiet recording environments)
     const minNoiseFloor_dB = -80;
     const robustNoiseFloor_dB = Math.max(noiseFloor_dB, minNoiseFloor_dB);
-    
-    // Additional SNR-based filtering: Remove calls with low SNR
-    // Real bat calls should have peak power >> above noise baseline
-    // 2025 ENHANCEMENT: Use RMS-based SNR (10 × log₁₀(Signal Power / Noise Power) from spectrogram)
     const snrThreshold_dB = -20;  // At least -20 dB above noise floor
     
     const filteredCalls = calls.filter(call => {
@@ -696,34 +678,33 @@ export class BatCallDetector {
       call.noiseFloor_dB = robustNoiseFloor_dB;
       
       // [2025 OPTIMIZATION] Conditional SNR Calculation
-      // If skipSNR is true (filtered pass), skip expensive RMS-based calculation
-      // and use fallback value. SNR will be recalculated on second pass with original audio.
       if (options.skipSNR) {
-        // Skip expensive RMS-based SNR calculation on filtered pass
         const spectralSNR_dB = call.peakPower_dB - robustNoiseFloor_dB;
         call.snr_dB = spectralSNR_dB;
         call.snrMechanism = 'Skipped (Filtered Pass)';
         call.quality = this.getQualityRating(spectralSNR_dB);
-        // Do NOT filter out based on SNR when skipping (will be recalculated on original audio)
         return true;
       }
       
       // 2025 ENHANCEMENT: Calculate RMS-based SNR from spectrogram
-      // Signal: time range [highFreqFrameIdx, endFrameIdx_forLowFreq], freq range [lowFreq, highFreq]
-      // Noise: all other regions in spectrogram
+      // Signal: time range [startFreqFrameIdx, endFrameIdx_forLowFreq], freq range [lowFreq, highFreq]
       try {
-        // Call calculateRMSbasedSNR with the spectrogram data
+        // [CRITICAL FIX] Pass call.spectrogram (sliced) instead of powerMatrix (full)
+        // This ensures indices (0 to N) correctly map to the call's frames
         const snrResult = this.calculateRMSbasedSNR(
           call,
-          powerMatrix,      // Full spectrogram in dB
-          freqBins,         // Full frequency bin array
-          call.endFrameIdx_forLowFreq  // Use the stored end frame index
+          call.spectrogram, // <--- CHANGED: Use the call's specific slice
+          freqBins,         
+          call.endFrameIdx_forLowFreq,
+          flowKHz,  
+          fhighKHz, 
+          options.noiseSpectrogram 
         );
         
         // Use the calculated RMS-based SNR
         if (snrResult.snr_dB !== null && isFinite(snrResult.snr_dB)) {
           call.snr_dB = snrResult.snr_dB;
-          call.snrMechanism = 'RMS-based (2025) - Spectrogram';
+          call.snrMechanism = snrResult.mechanism;
           
           // Store SNR calculation details for logging
           call.snrDetails = {
@@ -744,28 +725,20 @@ export class BatCallDetector {
             `Noise power: ${snrResult.noisePowerMean_dB.toFixed(1)} dB (${snrResult.noiseCount} bins)`
           );
         } else {
-          // If RMS-based SNR calculation failed, fall back to spectral SNR for filtering only
           const spectralSNR_dB = call.peakPower_dB - robustNoiseFloor_dB;
           call.snr_dB = spectralSNR_dB;
           call.snrMechanism = 'RMS-based (2025) - Spectral fallback for filtering';
-          
-          console.log(
-            `[SNR] RMS-based calculation failed (${snrResult.debug.reason}), using spectral fallback: ${spectralSNR_dB.toFixed(2)} dB`
-          );
+          console.log(`[SNR] RMS-based calculation failed (${snrResult.debug.reason}), using fallback`);
         }
       } catch (error) {
-        // On error, use spectral SNR for filtering
         const spectralSNR_dB = call.peakPower_dB - robustNoiseFloor_dB;
         call.snr_dB = spectralSNR_dB;
         call.snrMechanism = 'RMS-based (2025) - Error fallback';
-        
-        console.log(`[SNR] RMS-based calculation error: ${error.message}, using spectral fallback: ${spectralSNR_dB.toFixed(2)} dB`);
+        console.log(`[SNR] Error: ${error.message}`);
       }
       
-      // Calculate quality rating based on SNR
       call.quality = this.getQualityRating(call.snr_dB);
       
-      // If SNR (25th percentile) is too low, likely just noise
       const snr_dB = call.peakPower_dB - robustNoiseFloor_dB;
       if (snr_dB < snrThreshold_dB) {
         return false;
