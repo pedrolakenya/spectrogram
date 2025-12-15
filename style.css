@@ -4,7 +4,7 @@
 :root {
   --bg-primary: #ffffff;
   --bg-secondary: #f5f5f5;
-  --bg-tertiary: #eeeeee;
+  --bg-tertiary: #ffffff;
   --text-primary: #000000;
   --text-secondary: #333333;
   --paravalue-color:#0066cc;
@@ -55,10 +55,13 @@ body.dark-mode {
 #selection-time-info {
   position: absolute;
   top: 2px;
-  right: 4px;
+  right: 2px;
+  border-radius: 3px;
+  padding: 0px 5px 1px 5px;
   z-index: 1200;
   font-size: 12px;
-  background: rgba(255,255,255,0.92);
+  background: color-mix(in srgb, var(--bg-tertiary), transparent 10%);
+  transition: background 0.3s;
 }
 
 /* === 全局樣式 === */
@@ -76,7 +79,7 @@ html, body {
 
 ::-webkit-scrollbar {
   width: 10px;  /* 垂直 Scrollbar 的寬度 */
-  height: 10px; /* 水平 Scrollbar 的高度 (這就是你截圖中的那個) */
+  height: 10px; /* 水平 Scrollbar 的高度 */
 }
 
 /* 設定軌道 (Track) 的樣式 - 即背景 */
