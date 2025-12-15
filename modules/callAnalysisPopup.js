@@ -1183,7 +1183,7 @@ function createPopupWindow() {
   } else {
     // Manual 模式：顯示具體值（絕對值），黑色樣式
     highThresholdInput.value = Math.abs(window.__batCallControlsMemory.highFreqThreshold_dB).toString();
-    highThresholdInput.style.color = '#000';
+    highThresholdInput.style.color = 'var(--text-primary)';
   }
   
   highThresholdControl.appendChild(highThresholdInput);
@@ -1216,7 +1216,7 @@ function createPopupWindow() {
   } else {
     // Manual 模式：顯示具體值（絕對值），黑色樣式
     lowThresholdInput.value = Math.abs(window.__batCallControlsMemory.lowFreqThreshold_dB).toString();
-    lowThresholdInput.style.color = '#000';
+    lowThresholdInput.style.color = 'var(--text-primary)';
   }
   
   lowThresholdControl.appendChild(lowThresholdInput);
@@ -1384,7 +1384,6 @@ function createPopupWindow() {
     // Manual 模式：value 顯示用戶設定的數值，黑色文字
     highpassFreqInput.value = (window.__batCallControlsMemory.highpassFilterFreq_kHz || 40).toString();
     highpassFreqInput.placeholder = 'Auto';
-    highpassFreqInput.style.color = '#000';
   }
   
   highpassFreqControl.appendChild(highpassFreqInput);
