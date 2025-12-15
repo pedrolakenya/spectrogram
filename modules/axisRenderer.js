@@ -11,31 +11,28 @@ export function drawTimeAxis({
   const pxPerSec = zoomLevel;
   const totalWidth = duration * pxPerSec;
   
-  // 1. 定義時間膨脹係數 (通常 TE 是 10 倍)
+  // 1. 定義時間膨脹係數
   const timeFactor = timeExpansion ? 10 : 1;
 
   // 2. 計算「視覺上的」每秒像素數 (Effective Pixels Per Real Second)
-  // 如果是 TE 模式，檔案的一秒其實是現實的 0.1 秒，所以視覺密度應該按放大 10 倍後的標準來算
   const effectivePxPerSec = pxPerSec * timeFactor;
 
   let step = 1000;
-  // 使用還原後的 effectivePxPerSec 來決定 step，確保視覺密度一致
+  // 使用還原後的 effectivePxPerSec 來決定 step
   if (effectivePxPerSec >= 5000) step = 10;        // 10ms
   else if (effectivePxPerSec >= 2000) step = 20;   // 20ms
   else if (effectivePxPerSec >= 1000) step = 50;   // 50ms
   else if (effectivePxPerSec >= 800) step = 100;
   else if (effectivePxPerSec >= 500) step = 200;
   else if (effectivePxPerSec >= 300) step = 500;
+  // 預設 step = 1000
 
   // 3. 計算實際繪圖迴圈需要的增量 (Draw Step)
-  // step 是「現實世界」的毫秒數。
-  // 在 TE 檔案中，現實的 10ms 等於檔案的 100ms。
-  // 所以迴圈每次要跳 step * timeFactor
+  // step 是「現實世界」的毫秒數，loopStep 是「檔案世界」的毫秒數
   const loopStep = step * timeFactor;
 
   const fragment = document.createDocumentFragment();
   
-  // t 是檔案的時間 (File Time)
   for (let t = 0; t < duration * 1000; t += loopStep) {
     const left = (t / 1000) * pxPerSec;
 
@@ -46,7 +43,6 @@ export function drawTimeAxis({
     fragment.appendChild(majorTick);
 
     // 副刻度線
-    // 副刻度也需要根據 loopStep 調整位置
     const midLeft = left + (loopStep / 1000 / 2) * pxPerSec;
     if (midLeft <= totalWidth) {
       const minorTick = document.createElement('div');
@@ -55,26 +51,23 @@ export function drawTimeAxis({
       fragment.appendChild(minorTick);
     }
 
-    // 時間標籤
-    // 這裡需要顯示「現實世界」的時間
-    // t 是檔案時間 (ms), 轉成秒是 t/1000
-    // 如果是 TE 模式，現實時間 = 檔案時間 / 10
-    const fileSeconds = t / 1000;
-    const realSeconds = timeExpansion ? (fileSeconds / 10) : fileSeconds;
+    // 時間標籤處理
+    // 先算出「現實世界」的毫秒數
+    const fileTimeMs = t;
+    const realTimeMs = timeExpansion ? (fileTimeMs / 10) : fileTimeMs;
     
-    // 根據 step 大小決定標籤格式
     let labelStr;
+
+    // 恢復邏輯：根據 step 大小決定顯示單位 (s 或 ms)
     if (step >= 1000) {
-        // 如果間隔大於 1秒，顯示秒數 (e.g. "1", "2")
-        // 注意：如果是 TE 模式，這裡顯示的數值已經被 /10 了，所以邏輯一致
-        labelStr = `${Number(realSeconds.toFixed(1))}`; 
+        // [模式：秒]
+        // 顯示為秒數，保留小數點 (e.g., 0, 1, 2, 3.5)
+        const seconds = realTimeMs / 1000;
+        labelStr = `${Number(seconds.toFixed(1))}`; 
     } else {
-        // 顯示毫秒或小數點秒
-        // 為了美觀，我們統一用小數點表示秒 (e.g. "0.1", "0.02") 
-        // 或者是原本的 step (ms) 邏輯，視乎你想顯示 "100" 還是 "0.1"
-        // 這裡沿用你原本的邏輯：如果 step < 1000，通常顯示相對值或純數字，
-        // 但為了統一，建議直接顯示 realSeconds
-        labelStr = `${Number(realSeconds.toFixed(3))}`; // 去除多餘的0
+        // [模式：毫秒]
+        // 直接顯示毫秒整數 (e.g., 0, 50, 100, 200)
+        labelStr = `${Math.round(realTimeMs)}`;
     }
     
     const label = document.createElement('span');
@@ -85,10 +78,13 @@ export function drawTimeAxis({
     fragment.appendChild(label);
   }
 
+  // 更新 DOM
   axisElement.innerHTML = '';
   axisElement.appendChild(fragment);
   axisElement.style.width = `${totalWidth}px`;
-  labelElement.textContent = step >= 1000 ? 'Time (s)' : 'Time (s)'; // 建議統一單位
+  
+  // 恢復邏輯：更新軸的單位標籤
+  labelElement.textContent = step >= 1000 ? 'Time (s)' : 'Time (ms)';
 }
 
 export function drawFrequencyGrid({
