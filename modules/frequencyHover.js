@@ -126,7 +126,7 @@ export function initFrequencyHover({
   let hoveredSelection = null;
   let persistentLinesEnabled = true;
   let disablePersistentLinesForScrollbar = false;
-  const defaultScrollbarThickness = 20;
+  const defaultScrollbarThickness = 10;
   const getScrollbarThickness = () =>
     container.scrollWidth > viewer.clientWidth ? 0 : defaultScrollbarThickness;
   const edgeThreshold = 5;
