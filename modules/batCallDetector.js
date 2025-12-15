@@ -267,39 +267,14 @@ export class BatCallDetector {
       return 'Excellent';
     }
   }
-  
-  /**
+
+   /**
    * 2025 ENHANCEMENT: Calculate RMS-based SNR from Spectrogram
-   * 
-   * SNR = 10 × log₁₀ (Signal RMS / Noise RMS)
-   * 
-   * Signal Region: 
-   *   - Time range: from highFreqFrameIdx to endFrameIdx_forLowFreq
-   *   - Frequency range: from call.lowFreq_kHz to call.highFreq_kHz
-   *   - Calculated from spectrogram power values in dB (not from time-domain audio)
-   * 
-   * Noise Region: All other spectrogram bins in the selection area
-   * 
-   * @param {Object} call - BatCall object with frequency/time parameters
-   * @param {Array} spectrogram - STFT spectrogram [timeFrame][freqBin] in dB
-   * @param {Array} freqBins - Frequency bin centers in Hz
-   * @param {number} endFrameIdx_forLowFreq - End frame index for Low Frequency (limiting frame)
-   * @returns {Object} { snr_dB, mechanism, signalPowerMean_dB, noisePowerMean_dB, signalCount, noiseCount }
-   */
-/**
-   * 2025 ENHANCEMENT: Calculate RMS-based SNR from Spectrogram
-   * * Updated Logic (Dec 2025):
-   * Signal: Inside call (HighFreq Frame to LowFreq Frame), within [LowFreq, HighFreq]
-   * Noise: Calculated from external "Noise Spectrogram" (Last 10ms of file)
-   * Frequency Range: Selection Area [Flow, Fhigh]
-   * * @param {Object} call - BatCall object
-   * @param {Array} spectrogram - STFT spectrogram of the signal [timeFrame][freqBin]
-   * @param {Array} freqBins - Frequency bin centers in Hz
-   * @param {number} endFrameIdx_forLowFreq - End frame index for Low Frequency
-   * @param {number} flowKHz - Selection Start Frequency (kHz)
-   * @param {number} fhighKHz - Selection End Frequency (kHz)
-   * @param {Object} noiseSpectrogram - (Optional) Spectrogram of the last 10ms of original file
-   * @returns {Object} result
+   * Updated Logic:
+   * 1. Signal Region: Inside call (HighFreq Frame to LowFreq Frame), within [LowFreq, HighFreq]
+   * 2. Signal Threshold: Min_dB + (Max_dB - Min_dB) * 0.25 (Dynamic Range Thresholding)
+   * 3. Signal Mean: Average linear power of bins > Threshold
+   * 4. Noise: Calculated from external "Noise Spectrogram" (Last 10ms of file) or fallback
    */
   calculateRMSbasedSNR(call, spectrogram, freqBins, endFrameIdx_forLowFreq, flowKHz, fhighKHz, noiseSpectrogram = null) {
     const result = {
@@ -325,18 +300,20 @@ export class BatCallDetector {
       return result;
     }
     
-    // 1. Calculate SIGNAL Power (From Call Region)
+    // 1. Calculate SIGNAL Power (From Call Region) with Dynamic Thresholding
+    // =====================================================================
     const signalFreq_Hz_low = call.lowFreq_kHz * 1000;
     const signalFreq_Hz_high = call.highFreq_kHz * 1000;
-    
-    let signalPowerSum_linear = 0;
-    let signalCount = 0;
     
     // Store ranges for logging
     result.frequencyRange_kHz = { lowFreq: call.lowFreq_kHz, highFreq: call.highFreq_kHz };
     result.timeRange_frames = { start: call.highFreqFrameIdx, end: endFrameIdx_forLowFreq, duration: endFrameIdx_forLowFreq - call.highFreqFrameIdx + 1 };
     
-    // Iterate Signal Region
+    // STEP 1-A: Find Max and Min Energy within the Signal Region
+    let signalMaxDb = -Infinity;
+    let signalMinDb = Infinity;
+    let hasSignalBins = false;
+    
     for (let timeIdx = call.highFreqFrameIdx; timeIdx <= endFrameIdx_forLowFreq; timeIdx++) {
       if (timeIdx >= spectrogram.length) break;
       const frame = spectrogram[timeIdx];
@@ -345,15 +322,55 @@ export class BatCallDetector {
         const freqHz = freqBins[freqIdx];
         if (freqHz >= signalFreq_Hz_low && freqHz <= signalFreq_Hz_high) {
           const powerDb = frame[freqIdx];
-          signalPowerSum_linear += Math.pow(10, powerDb / 10);
-          signalCount++;
+          if (powerDb > signalMaxDb) signalMaxDb = powerDb;
+          if (powerDb < signalMinDb) signalMinDb = powerDb;
+          hasSignalBins = true;
         }
       }
     }
     
-    // 2. Calculate NOISE Power
-    // Logic: Use last 10ms of file (passed as noiseSpectrogram)
-    // Range: Selection Frequency (flowKHz to fhighKHz)
+    // Safety check if no bins found
+    if (!hasSignalBins || signalMaxDb === -Infinity) {
+      result.debug.reason = 'No signal bins in range';
+      return result;
+    }
+    
+    // STEP 1-B: Calculate Dynamic Threshold
+    // Threshold = Min + (Range * 0.25)
+    // Filters out the bottom 25% of energy (weak/edge bins) within the signal box
+    const dynamicRange = signalMaxDb - signalMinDb;
+    const thresholdOffset = dynamicRange * 0.25;
+    const signalThreshold_dB = signalMinDb + thresholdOffset;
+    
+    // STEP 1-C: Calculate Signal Mean using only bins ABOVE threshold
+    let signalPowerSum_linear = 0;
+    let signalCount = 0;
+    
+    for (let timeIdx = call.highFreqFrameIdx; timeIdx <= endFrameIdx_forLowFreq; timeIdx++) {
+      if (timeIdx >= spectrogram.length) break;
+      const frame = spectrogram[timeIdx];
+      
+      for (let freqIdx = 0; freqIdx < frame.length; freqIdx++) {
+        const freqHz = freqBins[freqIdx];
+        if (freqHz >= signalFreq_Hz_low && freqHz <= signalFreq_Hz_high) {
+          const powerDb = frame[freqIdx];
+          
+          // Apply Dynamic Threshold Filter
+          if (powerDb > signalThreshold_dB) {
+            signalPowerSum_linear += Math.pow(10, powerDb / 10);
+            signalCount++;
+          }
+        }
+      }
+    }
+    
+    // Store debug info
+    result.debug.signalThreshold = signalThreshold_dB;
+    result.debug.signalMax = signalMaxDb;
+    result.debug.signalMin = signalMinDb;
+    
+    // 2. Calculate NOISE Power (Last 10ms or Fallback)
+    // =====================================================================
     let noisePowerSum_linear = 0;
     let noiseCount = 0;
     
@@ -364,7 +381,7 @@ export class BatCallDetector {
       const selLowHz = flowKHz * 1000;
       const selHighHz = fhighKHz * 1000;
       const noiseMatrix = noiseSpectrogram.powerMatrix;
-      const noiseFreqBins = noiseSpectrogram.freqBins; // Assuming same resolution
+      const noiseFreqBins = noiseSpectrogram.freqBins; 
       
       for (let t = 0; t < noiseMatrix.length; t++) {
         const frame = noiseMatrix[t];
@@ -379,8 +396,7 @@ export class BatCallDetector {
         }
       }
     } else {
-      // Fallback: Use non-signal bins in the current spectrogram (Legacy behavior)
-      // This happens if noiseSpectrogram is not passed
+      // Fallback: Use non-signal bins in the current spectrogram
       result.mechanism = 'RMS-based (Fallback Internal)';
       
       for (let timeIdx = 0; timeIdx < spectrogram.length; timeIdx++) {
@@ -400,19 +416,21 @@ export class BatCallDetector {
     }
     
     // 3. Compute Results
+    // =====================================================================
     if (signalCount === 0) {
-      result.debug.reason = 'No signal bins found';
+      result.debug.reason = 'No signal bins found above threshold';
       return result;
     }
     
     if (noiseCount === 0) {
-      result.snr_dB = Infinity; // Should not happen with 10ms noise floor
+      result.snr_dB = Infinity; 
       return result;
     }
     
     const signalPowerMean_linear = signalPowerSum_linear / signalCount;
     const noisePowerMean_linear = noisePowerSum_linear / noiseCount;
     
+    // Convert back to dB
     result.signalPowerMean_dB = 10 * Math.log10(Math.max(signalPowerMean_linear, 1e-16));
     result.noisePowerMean_dB = 10 * Math.log10(Math.max(noisePowerMean_linear, 1e-16));
     result.signalCount = signalCount;
@@ -423,7 +441,8 @@ export class BatCallDetector {
       return result;
     }
     
-    result.snr_dB = -10 * Math.log10(signalPowerMean_linear / noisePowerMean_linear);
+    // SNR = 10 * log10(Signal_Mean / Noise_Mean)
+    result.snr_dB = 10 * Math.log10(signalPowerMean_linear / noisePowerMean_linear);
     
     return result;
   }
