@@ -91,7 +91,7 @@ html, body {
   border-radius: 10px; /* 讓滑塊變圓潤 */
   
   /* 關鍵技巧：使用 border 來製造滑塊與軌道間的空隙，讓它看起來更像懸浮的 */
-  border: 1ch solid var(--scrollbar-track);
+  border: 1px solid var(--scrollbar-track);
   background-clip: content-box;
 }
 
