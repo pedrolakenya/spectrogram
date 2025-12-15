@@ -336,10 +336,10 @@ export class BatCallDetector {
     }
     
     // STEP 1-B: Calculate Dynamic Threshold
-    // Threshold = Min + (Range * 0.15)
-    // Filters out the bottom 15% of energy (weak/edge bins) within the signal box
+    // Threshold = Min + (Range * 0.25)
+    // Filters out the bottom 25% of energy (weak/edge bins) within the signal box
     const dynamicRange = signalMaxDb - signalMinDb;
-    const thresholdOffset = dynamicRange * 0.15;
+    const thresholdOffset = dynamicRange * 0.25;
     const signalThreshold_dB = signalMinDb + thresholdOffset;
     
     // STEP 1-C: Calculate Signal Mean using only bins ABOVE threshold
