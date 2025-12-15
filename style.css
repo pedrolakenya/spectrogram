@@ -613,7 +613,7 @@ input[type="file"]:hover {
 }
 
 #sidebar.collapsed {
-  width: 0;
+  width: 0 !important; /* 添加 !important 以覆蓋手動拖拉的寬度 */
   padding: 0;
   margin-right: 0;
   border: none;

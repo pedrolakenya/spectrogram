@@ -22,6 +22,9 @@ export function initSidebar({ onFileSelected } = {}) {
   let isEditMode = false;
 
   toggleBtn.addEventListener('click', () => {
+    // 1. 清除手動拖拉的寬度，讓 CSS Class 的寬度設定生效，並觸發 Transition
+    sidebar.style.width = ''; 
+    
     sidebar.classList.toggle('collapsed');
     const isCollapsed = sidebar.classList.contains('collapsed');
     toggleBtn.title = isCollapsed ? 'Open File List' : 'Collapse File List';
@@ -33,6 +36,9 @@ export function initSidebar({ onFileSelected } = {}) {
   });
 
   editBtn.addEventListener('click', () => {
+    // 1. 清除手動拖拉的寬度，讓 .edit-mode 的 width: 300px 生效，並觸發 Transition
+    sidebar.style.width = ''; 
+    
     isEditMode = !isEditMode;
     sidebar.classList.toggle('edit-mode', isEditMode);
   });
