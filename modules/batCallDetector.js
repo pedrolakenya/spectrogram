@@ -270,14 +270,18 @@ export class BatCallDetector {
 
 /**
    * 2025 ENHANCEMENT: Calculate RMS-based SNR from Spectrogram
-   * Updated Logic:
-   * 1. Signal Region: Inside call (StartFreq Frame to LowFreq Frame), within [LowFreq, HighFreq]
-   * (Updated: Start time is now StartFreqFrameIdx, not HighFreqFrameIdx)
-   * 2. Signal Threshold: Min_dB + (Max_dB - Min_dB) * 0.25 (Dynamic Range Thresholding)
-   * 3. Signal Mean: Average linear power of bins > Threshold
-   * 4. Noise: Calculated from external "Noise Spectrogram" (Last 10ms of file) or fallback
+   * Fixed Bug: Resizing selection area affects SNR.
+   * Solution: Use Absolute Indices for Signal Region to strictly isolate call from selection noise.
+   * * @param {Object} call - BatCall object
+   * @param {Array} spectrogram - Full PowerMatrix of the selection
+   * @param {Array} freqBins - Frequency bin centers
+   * @param {number} signalStartIdx - ABSOLUTE Start Frame Index in spectrogram
+   * @param {number} signalEndIdx - ABSOLUTE End Frame Index in spectrogram
+   * @param {number} flowKHz - Selection Start Freq
+   * @param {number} fhighKHz - Selection End Freq
+   * @param {Object} noiseSpectrogram - (Optional) External noise reference
    */
-  calculateRMSbasedSNR(call, spectrogram, freqBins, endFrameIdx_forLowFreq, flowKHz, fhighKHz, noiseSpectrogram = null) {
+  calculateRMSbasedSNR(call, spectrogram, freqBins, signalStartIdx, signalEndIdx, flowKHz, fhighKHz, noiseSpectrogram = null) {
     const result = {
       snr_dB: null,
       mechanism: 'RMS-based (2025)',
@@ -296,11 +300,6 @@ export class BatCallDetector {
       return result;
     }
     
-    // Check if startFreqFrameIdx is available (it should be 0 or calculated)
-    const startTimeIdx = (call.startFreqFrameIdx !== undefined && call.startFreqFrameIdx !== null) 
-      ? call.startFreqFrameIdx 
-      : 0; // Fallback to 0 if not set (Start Freq is usually frame 0)
-    
     // 1. Calculate SIGNAL Power (From Call Region) with Dynamic Thresholding
     // =====================================================================
     const signalFreq_Hz_low = call.lowFreq_kHz * 1000;
@@ -308,16 +307,15 @@ export class BatCallDetector {
     
     // Store ranges for logging
     result.frequencyRange_kHz = { lowFreq: call.lowFreq_kHz, highFreq: call.highFreq_kHz };
-    // [UPDATED] Log correct start frame
-    result.timeRange_frames = { start: startTimeIdx, end: endFrameIdx_forLowFreq, duration: endFrameIdx_forLowFreq - startTimeIdx + 1 };
+    result.timeRange_frames = { start: signalStartIdx, end: signalEndIdx, duration: signalEndIdx - signalStartIdx + 1 };
     
     // STEP 1-A: Find Max and Min Energy within the Signal Region
     let signalMaxDb = -Infinity;
     let signalMinDb = Infinity;
     let hasSignalBins = false;
     
-    // [UPDATED] Loop starts from startTimeIdx
-    for (let timeIdx = startTimeIdx; timeIdx <= endFrameIdx_forLowFreq; timeIdx++) {
+    // Loop strictly within the defined Absolute Signal Region
+    for (let timeIdx = signalStartIdx; timeIdx <= signalEndIdx; timeIdx++) {
       if (timeIdx >= spectrogram.length) break;
       const frame = spectrogram[timeIdx];
       
@@ -349,8 +347,7 @@ export class BatCallDetector {
     let signalPowerSum_linear = 0;
     let signalCount = 0;
     
-    // [UPDATED] Loop starts from startTimeIdx
-    for (let timeIdx = startTimeIdx; timeIdx <= endFrameIdx_forLowFreq; timeIdx++) {
+    for (let timeIdx = signalStartIdx; timeIdx <= signalEndIdx; timeIdx++) {
       if (timeIdx >= spectrogram.length) break;
       const frame = spectrogram[timeIdx];
       
@@ -400,9 +397,8 @@ export class BatCallDetector {
         }
       }
     } else {
-      // Fallback: Use non-signal bins in the current spectrogram
-      // NOTE: Since we passed call.spectrogram, these are bins outside the call frequencies
-      // but inside the call time duration. This is a valid local noise floor.
+      // Fallback: Use non-signal bins in the current spectrogram (Selection Area)
+      // This correctly treats the "empty" area caused by resizing as Noise.
       result.mechanism = 'RMS-based (Fallback Internal)';
       
       for (let timeIdx = 0; timeIdx < spectrogram.length; timeIdx++) {
@@ -410,10 +406,11 @@ export class BatCallDetector {
         for (let freqIdx = 0; freqIdx < frame.length; freqIdx++) {
           const freqHz = freqBins[freqIdx];
           
-          // [UPDATED] Exclude signal region based on new startTimeIdx
-          const isInSignalTime = (timeIdx >= startTimeIdx) && (timeIdx <= endFrameIdx_forLowFreq);
+          // Check if this bin is inside the SIGNAL BOX
+          const isInSignalTime = (timeIdx >= signalStartIdx) && (timeIdx <= signalEndIdx);
           const isInSignalFreq = (freqHz >= signalFreq_Hz_low) && (freqHz <= signalFreq_Hz_high);
           
+          // If NOT inside Signal Box, it is Noise
           if (!(isInSignalTime && isInSignalFreq)) {
              const powerDb = frame[freqIdx];
              noisePowerSum_linear += Math.pow(10, powerDb / 10);
@@ -455,23 +452,35 @@ export class BatCallDetector {
     return result;
   }
   
-  /**
+/**
    * Detect all bat calls in audio selection
-   * ...
+   * Returns: array of BatCall objects
+   * * @param {Float32Array} audioData - Audio samples
+   * @param {number} sampleRate - Sample rate in Hz
+   * @param {number} flowKHz - Low frequency bound in kHz
+   * @param {number} fhighKHz - High frequency bound in kHz
+   * @param {Object} options - Optional parameters
+   * @param {boolean} options.skipSNR - If true, skip expensive SNR calculation on first pass
    * @param {Object} options.noiseSpectrogram - (Optional) Spectrogram of last 10ms for SNR calc
+   * @returns {Promise<Array>} Array of BatCall objects
    */
   async detectCalls(audioData, sampleRate, flowKHz, fhighKHz, options = { skipSNR: false, noiseSpectrogram: null }) {
-    // ... (existing code: spectrogram generation, Phase 1 detection) ...
     if (!audioData || audioData.length === 0) return [];
     
+    // Generate high-resolution STFT spectrogram (Full Selection)
     const spectrogram = this.generateSpectrogram(audioData, sampleRate, flowKHz, fhighKHz);
     if (!spectrogram) return [];
     
     const { powerMatrix, timeFrames, freqBins, freqResolution } = spectrogram;
+    
+    // Phase 1: Detect call boundaries using energy threshold
     const callSegments = this.detectCallSegments(powerMatrix, timeFrames, freqBins, flowKHz, fhighKHz);
     
-    // ... (existing code: filtering segments) ...
+    if (callSegments.length === 0) return [];
     
+    // ============================================================
+    // FILTER: Remove segments that are too short
+    // ============================================================
     const filteredSegments = callSegments.filter(segment => {
       const frameDurationSec = 1 / (sampleRate / this.config.fftSize);
       const numFrames = segment.endFrame - segment.startFrame + 1;
@@ -480,32 +489,41 @@ export class BatCallDetector {
     });
     
     if (filteredSegments.length === 0) return [];
-
-    // Phase 2: Measure precise parameters
+    
+    // Phase 2: Measure precise parameters for each detected call
     const calls = filteredSegments.map(segment => {
-       // ... (existing call object creation and frequency measurement) ...
-       const call = new BatCall();
-       call.startTime_s = timeFrames[segment.startFrame];
-       call.endTime_s = timeFrames[Math.min(segment.endFrame + 1, timeFrames.length - 1)];
-       call.spectrogram = powerMatrix.slice(segment.startFrame, segment.endFrame + 1);
-       call.timeFrames = timeFrames.slice(segment.startFrame, segment.endFrame + 2);
-       call.freqBins = freqBins;
-       
-       call.calculateDuration();
-       
-       if (call.duration_ms < this.config.minCallDuration_ms) return null;
-       
-       this.measureFrequencyParameters(call, flowKHz, fhighKHz, freqBins, freqResolution);
-       
-       call.Flow = call.lowFreq_kHz * 1000;
-       call.Fhigh = call.highFreq_kHz;
-       call.callType = CallTypeClassifier.classify(call);
-       
-       return call;
+      const call = new BatCall();
+      // These are Absolute Times based on the full spectrogram
+      call.startTime_s = timeFrames[segment.startFrame];
+      call.endTime_s = timeFrames[Math.min(segment.endFrame + 1, timeFrames.length - 1)];
+      
+      // Slice the spectrogram for this specific call (Relative Data)
+      call.spectrogram = powerMatrix.slice(segment.startFrame, segment.endFrame + 1);
+      call.timeFrames = timeFrames.slice(segment.startFrame, segment.endFrame + 2);
+      call.freqBins = freqBins;
+      
+      call.calculateDuration();
+      
+      // Filter by min duration
+      if (call.duration_ms < this.config.minCallDuration_ms) {
+        return null;
+      }
+      
+      // Measure parameters (populates startFreqTime_s, endFreqTime_s etc.)
+      this.measureFrequencyParameters(call, flowKHz, fhighKHz, freqBins, freqResolution);
+      
+      call.Flow = call.lowFreq_kHz * 1000;
+      call.Fhigh = call.highFreq_kHz;
+      call.callType = CallTypeClassifier.classify(call);
+      
+      return call;
     }).filter(call => call !== null);
-
-    // ... (existing code: noise floor calc) ...
-    // Collect power values for robustNoiseFloor_dB (used for simple filtering)
+    
+    // ============================================================
+    // Noise Floor & SNR Calculation
+    // ============================================================
+    
+    // Calculate global noise floor for the selection (fallback baseline)
     const allPowerValues = [];
     for (let frameIdx = 0; frameIdx < powerMatrix.length; frameIdx++) {
       const framePower = powerMatrix[frameIdx];
@@ -514,41 +532,67 @@ export class BatCallDetector {
       }
     }
     allPowerValues.sort((a, b) => a - b);
+    
     const percentile25Index = Math.floor(allPowerValues.length * 0.25);
     const noiseFloor_dB = allPowerValues[Math.max(0, percentile25Index)];
     const minNoiseFloor_dB = -80;
     const robustNoiseFloor_dB = Math.max(noiseFloor_dB, minNoiseFloor_dB);
     const snrThreshold_dB = -20;
-
+    
     const filteredCalls = calls.filter(call => {
-      if (call.peakPower_dB === null || call.peakPower_dB === undefined) return false;
-      call.noiseFloor_dB = robustNoiseFloor_dB;
-      
-      if (options.skipSNR) {
-         // ... (existing skip logic) ...
-         const spectralSNR_dB = call.peakPower_dB - robustNoiseFloor_dB;
-         call.snr_dB = spectralSNR_dB;
-         call.snrMechanism = 'Skipped (Filtered Pass)';
-         call.quality = this.getQualityRating(spectralSNR_dB);
-         return true;
+      if (call.peakPower_dB === null || call.peakPower_dB === undefined) {
+        return false;
       }
       
+      call.noiseFloor_dB = robustNoiseFloor_dB;
+      
+      // OPTIMIZATION: Skip SNR calculation if requested (e.g., first pass with filter)
+      if (options.skipSNR) {
+        const spectralSNR_dB = call.peakPower_dB - robustNoiseFloor_dB;
+        call.snr_dB = spectralSNR_dB;
+        call.snrMechanism = 'Skipped (Filtered Pass)';
+        call.quality = this.getQualityRating(spectralSNR_dB);
+        return true;
+      }
+      
+      // 2025 ENHANCEMENT: RMS-based SNR from Spectrogram
+      // FIXED: Use Absolute Indices derived from Time to avoid selection size bias
       try {
-        // [MODIFIED] Pass flowKHz, fhighKHz, and options.noiseSpectrogram
+        // Calculate Time Resolution
+        const timePerFrame = spectrogram.timeFrames[1] - spectrogram.timeFrames[0];
+        const firstFrameTime = spectrogram.timeFrames[0];
+        
+        // Convert Absolute Time -> Absolute Frame Index in full powerMatrix
+        // call.startFreqTime_s is the absolute time of the start frequency frame
+        // call.endFreqTime_s is the absolute time of the end frequency frame
+        
+        // Safety check: ensure time parameters exist
+        const startTime = call.startFreqTime_s !== null ? call.startFreqTime_s : call.startTime_s;
+        const endTime = call.endFreqTime_s !== null ? call.endFreqTime_s : call.endTime_s;
+
+        const startFrameAbs = Math.round((startTime - firstFrameTime) / timePerFrame);
+        const endFrameAbs = Math.round((endTime - firstFrameTime) / timePerFrame);
+        
+        // Clamp indices to be within valid powerMatrix bounds
+        const validStart = Math.max(0, Math.min(startFrameAbs, powerMatrix.length - 1));
+        const validEnd = Math.max(validStart, Math.min(endFrameAbs, powerMatrix.length - 1));
+
+        // Call calculateRMSbasedSNR with FULL powerMatrix and ABSOLUTE indices
         const snrResult = this.calculateRMSbasedSNR(
           call,
-          powerMatrix,
+          powerMatrix,      // Full spectrogram (includes selection noise)
           freqBins,
-          call.endFrameIdx_forLowFreq,
-          flowKHz,  // New param
-          fhighKHz, // New param
-          options.noiseSpectrogram // New param
+          validStart,       // ABSOLUTE Start Index
+          validEnd,         // ABSOLUTE End Index
+          flowKHz,  
+          fhighKHz, 
+          options.noiseSpectrogram
         );
         
         if (snrResult.snr_dB !== null && isFinite(snrResult.snr_dB)) {
           call.snr_dB = snrResult.snr_dB;
           call.snrMechanism = snrResult.mechanism;
-          // ... (existing logging) ...
+          
           call.snrDetails = {
             frequencyRange_kHz: snrResult.frequencyRange_kHz,
             timeRange_frames: snrResult.timeRange_frames,
@@ -557,15 +601,22 @@ export class BatCallDetector {
             signalCount: snrResult.signalCount,
             noiseCount: snrResult.noiseCount
           };
+          
+          console.log(
+            `[SNR] Abs frames: ${validStart}-${validEnd} (${(validEnd-validStart+1)} frames), ` +
+            `SNR: ${call.snr_dB.toFixed(2)} dB, Mechanism: ${call.snrMechanism}`
+          );
         } else {
-           // Fallback
-           const spectralSNR_dB = call.peakPower_dB - robustNoiseFloor_dB;
-           call.snr_dB = spectralSNR_dB;
+          // Fallback if RMS calculation fails
+          const spectralSNR_dB = call.peakPower_dB - robustNoiseFloor_dB;
+          call.snr_dB = spectralSNR_dB;
+          call.snrMechanism = 'RMS-based (2025) - Calculation failed fallback';
         }
       } catch (error) {
-        // Error handling
+        console.error(`[SNR] Error: ${error.message}`);
         const spectralSNR_dB = call.peakPower_dB - robustNoiseFloor_dB;
         call.snr_dB = spectralSNR_dB;
+        call.snrMechanism = 'RMS-based (2025) - Error fallback';
       }
       
       call.quality = this.getQualityRating(call.snr_dB);
@@ -574,6 +625,7 @@ export class BatCallDetector {
       if (snr_dB < snrThreshold_dB) {
         return false;
       }
+      
       return true;
     });
     
