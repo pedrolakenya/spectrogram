@@ -588,14 +588,13 @@ input[type="file"]:hover {
 #mainarea {
   flex-grow: 1;
   overflow-x: hidden;
-  padding: 10px 5px 0px 2px
+  padding: 10px 5px 0px 5px
 }
 
 #sidebar {
   width: 250px;
   border-right: 1px solid var(--border-color);
   padding: 10px 10px 10px 10px;
-  margin-right:10px;
   font-size: 13px;
   flex-shrink: 0;
   box-sizing: border-box;
@@ -621,6 +620,7 @@ input[type="file"]:hover {
 /* === Sidebar Resizer Handle === */
 #sidebar-resizer {
   width: 5px;
+  margin-left:-3px;
   flex-shrink: 0;
   cursor: w-resize;
   background-color: transparent;
