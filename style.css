@@ -133,6 +133,7 @@ html, body {
   position: relative;
   border: 1px solid var(--border-color);
   background-color: var(--bg-primary);
+  transition: background-color 0.3s, border 0.3s;
 }
 #spectrogram-only {
   position: relative;
@@ -174,6 +175,7 @@ html, body {
   font-size: 12px;
   color: var(--text-primary);
   pointer-events: none;
+  transition: color 0.3s;
 }
 
 /* === Overlay 與 Hover 線條 === */
@@ -327,6 +329,7 @@ html, body {
   z-index: 12;
   overflow: hidden;
   pointer-events: auto;
+  transition: border 0.3s;
 }
 .zoom-button {
   width: 30px;
@@ -339,6 +342,7 @@ html, body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: background 0.3s, color 0.3s;
 }
 .zoom-button:not(:disabled):hover {
   background: var(--zoombutton-hover);
@@ -398,6 +402,7 @@ input[type="range"]::-moz-range-thumb {
   text-align: right;
   color: var(--text-primary);
   margin: -3px 0px 0px -10px;
+  transition: color 0.3s;
 }
 
 /* === 輸入框與按鈕 === */
@@ -413,7 +418,7 @@ input[type="file"] {
   background-color: var(--input-bg);
   color: var(--text-primary);
   cursor: text;
-  transition: background 0.3s;
+  transition: background 0.3s, color 0.3s, border 0.3s;
 }
 input[type="file"]:hover {
   background-color: var(--bg-tertiary);
@@ -559,12 +564,14 @@ input[type="file"]:hover {
   white-space: nowrap;
   border-radius: 3px;
   z-index: 25;
+  transition: background 0.3s;
 }
 
 /* === 搜尋列 === */
 #searchInput {
   flex: 1;
   box-sizing: border-box;
+  width: 100px;
 }
 
 #searchContainer {
@@ -1469,12 +1476,14 @@ input.tag-button.editing {
 .dropdown-menu {
   position: absolute;
   display: none;
-  background: #fff;
+  background: var(--toolbar-bg);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   padding: 4px 0;
   z-index: 1000;
   font-family: 'Noto Sans HK', sans-serif;
+  transition: background-color 0.3s, border 0.3s;
 }
 
 .dropdown-item {
@@ -1482,10 +1491,13 @@ input.tag-button.editing {
   cursor: pointer;
   white-space: nowrap;
   font-size: 14px;
+  background-color: var(--toolbar-bg);
+  transition: background-color 0.3s;
 }
 .dropdown-item:hover,
 .dropdown-item.highlighted {
-  background-color: #f0f0f0;
+  background-color: var(--zoombutton-hover);
+  transition: background-color 0.3s;
 }
 .dropdown-item.selected::before {
   content: '\2713';
@@ -1509,6 +1521,7 @@ input.tag-button.editing {
   opacity: 1;
   transition: opacity 0.3s ease;
   color: var(--text-primary);
+  transition: background 0.3s, color 0.3s, border 0.3s;
 }
 
 .map-popup.hidden {
@@ -1537,6 +1550,7 @@ input.tag-button.editing {
   border-top-right-radius: 8px;
   cursor: move;
   user-select: none;
+  transition: background 0.3s, border 0.3s;
 }
 
 .popup-title {
@@ -1545,10 +1559,12 @@ input.tag-button.editing {
   font-size: 12px;
   font-family: 'Noto Sans HK', sans-serif;
   color: var(--text-primary);
+  transition: color 0.3s;
 }
 
 .popup-drag-bar i {
   color: var(--dragbar-icon-color);
+  transition: color 0.3s;
 }
 
 .popup-close-btn {
@@ -1563,6 +1579,7 @@ input.tag-button.editing {
   font-size: 20px;
   cursor: pointer;
   color: var(--dragbar-icon-color);
+  transition: color 0.3s;
 }
 .popup-close-btn:hover {
   color: #c00;
@@ -1697,6 +1714,7 @@ input.tag-button.editing {
   font-family: 'Noto Sans HK', sans-serif;
   box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
   cursor: move;
+  transition: background 0.3s, border 0.3s;
 }
 
 .freq-tooltip-table {
@@ -1747,6 +1765,7 @@ input.tag-button.editing {
   width: 5px;
   height: 1px;
   background: var(--text-primary);
+  transition: background 0.3s;
 }
 
 .freq-minor-tick {
@@ -1756,6 +1775,7 @@ input.tag-button.editing {
   width: 3px;
   height: 1px;
   background: var(--text-primary);
+  transition: background 0.3s; 
 }
 
 .freq-axis-label {
@@ -1763,6 +1783,7 @@ input.tag-button.editing {
   right: 8px;
   transform: translateY(-50%);
   color: var(--text-primary);
+  transition: color 0.3s;
 }
 
 .time-major-tick {
@@ -1771,6 +1792,7 @@ input.tag-button.editing {
   width: 1px;
   height: 5px;
   background: var(--text-primary);
+  transition: background 0.3s;
   opacity: 0.7;
 }
 
@@ -1780,6 +1802,7 @@ input.tag-button.editing {
   width: 1px;
   height: 3px;
   background: var(--text-primary);
+  transition: background 0.3s; 
   opacity: 0.7;
 }
 
@@ -1789,10 +1812,12 @@ input.tag-button.editing {
   transform: translateX(-50%);
   font-size: 12px;
   color: var(--text-primary);
+  transition: color 0.3s;
 }
 .time-axis-label.zero-label {
   transform: none;
   color: var(--text-primary);
+  transition: color 0.3s;
 }
 
 .coord-scale-wrapper {
@@ -2648,6 +2673,7 @@ input.tag-button.editing {
   font-size: 12px;
   color: var(--text-primary);
   width: 45%;
+  transition: color 0.3s;
 }
 
 .param-value {
@@ -2663,6 +2689,7 @@ input.tag-button.editing {
   padding-left: 4px;
   font-size: 12px;
   width: 20%;
+  transition: color 0.3s;
 }
 
 .bat-call-parameters-table tr:last-child td {
@@ -2711,6 +2738,7 @@ input.tag-button.editing {
   display: flex;
   border-radius: 5px;
   border: 1px solid var(--border-color);
+  caret-color: var(--text-primary);
   gap: 8px;
   align-items: center;
   justify-content: center;
@@ -2719,8 +2747,7 @@ input.tag-button.editing {
   max-height: 150px;
   opacity: 1;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
-  color: var(--text-primary);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, background 0.3s, border 0.3s;
 }
 
 .bat-call-controls[style*="display: none"] {
@@ -2743,6 +2770,7 @@ input.tag-button.editing {
   font-weight: 600;
   color: var(--text-primary);
   font-size: 11px;
+  transition: color 0.3s;
 }
 
 .bat-call-controls input[type="number"],
@@ -2754,6 +2782,7 @@ input.tag-button.editing {
   font-family: 'Noto Sans HK', sans-serif;
   background: var(--input-bg);
   color: var(--text-primary);
+  transition: background 0.3s, border 0.3s, color 0.3s;
 }
 
 .bat-call-controls input[type="number"] {
