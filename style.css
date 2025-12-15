@@ -10,6 +10,10 @@
   --border-color: #cccccc;
   --input-bg: #ffffff;
   --button-hover: #999;
+  --zoombutton-bg: #fff;
+  --zoombutton-color: #333333;
+  --zoombutton-hover: #ccc; 
+  --zoombutton-disable: #eee;
   --icon-color: #ffffff;
   --toolbar-bg: #ffffff;
   --sidebar-bg: #ffffff;
@@ -29,6 +33,10 @@ body.dark-mode {
   --text-secondary: #C4C7C5;
   --border-color: #444746;
   --input-bg: #1E1F20;
+  --zoombutton-bg: #333333;
+  --zoombutton-color: #E3E3E3;
+  --zoombutton-hover: #616161; 
+  --zoombutton-disable: #1E1F20; 
   --button-hover: #616161;
   --icon-color: #E3E3E3;
   --toolbar-bg: #28292a;
@@ -36,8 +44,8 @@ body.dark-mode {
   --dragbar-bg: #28292a;
   --dragbar-icon-color: #E3E3E3;
   --moon-icon-color: #FFD700;
-  --scrollbar-track: #1E1F20; /* 與 Sidebar 背景一致，讓它隱藏起來 */
-  --scrollbar-thumb: #7a7a7a; /* 與邊框顏色一致 */
+  --scrollbar-track: #1E1F20;
+  --scrollbar-thumb: #7a7a7a; 
   --scrollbar-thumb-hover: #c7c7c7;
 }
 
@@ -313,9 +321,8 @@ html, body {
   position: absolute;
   bottom: 30px;
   right: 10px;
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   z-index: 12;
   overflow: hidden;
@@ -325,7 +332,8 @@ html, body {
   width: 30px;
   height: 30px;
   font-size: 18px;
-  background: #fff;
+  background: var(--zoombutton-bg);
+  color: var(--zoombutton-color);
   border: none;
   display: flex;
   align-items: center;
@@ -333,10 +341,10 @@ html, body {
   cursor: pointer;
 }
 .zoom-button:not(:disabled):hover {
-  background: #ccc;
+  background: var(--zoombutton-hover);
 }
 .zoom-button:disabled {
-  background: #eee;
+  background: var(--zoombutton-disable);
   color: #aaa;
   cursor: not-allowed;
 }
