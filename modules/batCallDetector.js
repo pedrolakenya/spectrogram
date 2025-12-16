@@ -724,16 +724,6 @@ export class BatCallDetector {
       return true;
     });
     
-    // ============================================================
-    // [2025] Apply Time Expansion Correction to All Detected Calls
-    // If Time Expansion mode is enabled, correct frequencies and durations
-    // ============================================================
-    if (getTimeExpansionMode()) {
-      for (const call of filteredCalls) {
-        call.applyTimeExpansion(10);  // Default 10x time expansion
-      }
-    }
-    
     return filteredCalls;
   }
   
@@ -3498,6 +3488,14 @@ findOptimalLowFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, callP
       // Pure FM call: restore the anti-rebounce setting from original config
       // Re-read from parent config to get user's intended setting
       this.config.enableBackwardEndFreqScan = this.config.enableBackwardEndFreqScan !== false;
+    }
+    
+    // ============================================================
+    // [2025] Apply Time Expansion Correction to Frequency Parameters
+    // If Time Expansion mode is enabled, correct all frequency values
+    // ============================================================
+    if (getTimeExpansionMode()) {
+      call.applyTimeExpansion(10);  // Default 10x time expansion
     }
   }
   
