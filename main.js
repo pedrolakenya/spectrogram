@@ -403,42 +403,53 @@ stopBtn.addEventListener('click', () => {
   hideStopButton();
 });
 
-// [修正 Scrollbar 樣式 - 最終版]
-// 根據你的建議，我們改為監聽 viewer-wrapper 的尺寸變化
+// [修正 Scrollbar 樣式 - Class 重注法]
 const wrapperElem = document.getElementById('viewer-wrapper');
 const containerElem = document.getElementById('viewer-container');
 
+// 初始化：確保一開始就有這個 class
+if (containerElem) {
+  containerElem.classList.add('custom-scrollbar');
+}
+
 if (wrapperElem && containerElem) {
   let resizeTimeout;
+  let isReflowing = false;
 
   const ro = new ResizeObserver(() => {
-    // 1. Sidebar 拖動會改變 wrapper 大小
-    // 我們利用這個時機，強制瀏覽器 "重刷" container 的卷軸樣式
-    
-    // 使用 requestAnimationFrame 確保在下一幀渲染前執行
-    window.requestAnimationFrame(() => {
-      // 這種 "切換 overflow" 的技巧是強迫 Chrome 重新計算樣式的標準解法
-      containerElem.style.overflowX = 'hidden';
-      
-      // 強制讀取一個 layout 屬性 (offsetWidth)，強迫瀏覽器立刻執行 Reflow
-      void containerElem.offsetWidth; 
-      
-      containerElem.style.overflowX = 'auto';
-    });
+    // 防止回圈
+    if (isReflowing) return;
 
-    // 2. 原本的 update axes 邏輯保留 (防抖動)
+    // 1. 防抖動更新座標軸 (保留原有邏輯)
     if (resizeTimeout) clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
        if (typeof renderAxes === 'function' && typeof containerWidth !== 'undefined') {
-         if (container.clientWidth !== containerWidth) {
-           containerWidth = container.clientWidth;
+         if (containerElem.clientWidth !== containerWidth) {
+           containerWidth = containerElem.clientWidth;
            renderAxes();
          }
        }
     }, 30);
+
+    // 2. 關鍵修正：模擬 Zoom In 的效果
+    // 當 Sidebar 擠壓導致 Wrapper 變動時，我們強制重置 Scrollbar 的 Class
+    window.requestAnimationFrame(() => {
+      isReflowing = true;
+      
+      // A. 拔掉 Class (瀏覽器會暫時切回預設樣式或無樣式)
+      containerElem.classList.remove('custom-scrollbar');
+      
+      // B. 強制 Reflow (讀取 offsetWidth 迫使瀏覽器計算當前狀態)
+      void containerElem.offsetWidth;
+      
+      // C. 加回 Class (瀏覽器發現有新樣式，必須重新構建 Webkit Scrollbar)
+      containerElem.classList.add('custom-scrollbar');
+      
+      isReflowing = false;
+    });
   });
 
-  // 監聽 wrapper，因為它是 Sidebar 變化的直接受害者
+  // 監聽 Wrapper (因為它是被 Sidebar 擠壓的源頭)
   ro.observe(wrapperElem);
 }
 
