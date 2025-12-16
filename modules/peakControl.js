@@ -75,12 +75,11 @@ export function initPeakControl(options = {}) {
       if (peakThresholdVal) {
         peakThresholdVal.textContent = Math.round(peakThreshold * 100) + '%';
       }
-    });
-
-    // 滑塊放開時更新 spectrogram
-    peakThresholdSlider.addEventListener('change', () => {
+      // 修改：改為在 input 事件中即時更新 spectrogram
       onThresholdChanged(peakThreshold);
     });
+
+    // 修改：移除了原本的 change 事件監聽器 (滑塊放開時更新)
   }
 
   return {
