@@ -403,6 +403,38 @@ stopBtn.addEventListener('click', () => {
   hideStopButton();
 });
 
+// 取得 viewer container
+const viewerContainer = document.getElementById('viewer-container');
+
+// 創建一個 ResizeObserver 來監聽容器本身的尺寸變化
+const resizeObserver = new ResizeObserver(() => {
+  // 1. 更新座標軸 (原本你在 window resize 做的)
+  if (containerWidth !== viewerContainer.clientWidth) {
+    containerWidth = viewerContainer.clientWidth;
+    renderAxes();
+  }
+
+  // 2. 強制 Scrollbar 重繪 (解決原生 Scrollbar 殘留問題)
+  // 由於 ResizeObserver 觸發頻率很高，我們加一個簡單的檢查，避免無限迴圈
+  if (viewerContainer.style.overflowX !== 'hidden') {
+     // 暫存當前的 scrollLeft 位置，以免畫面跳動
+     const scrollPos = viewerContainer.scrollLeft;
+     
+     // 強制切換 overflow 觸發 Layout 刷新
+     viewerContainer.style.overflowX = 'hidden';
+     void viewerContainer.offsetHeight; // 強制 Reflow (關鍵!)
+     viewerContainer.style.overflowX = 'auto';
+     
+     // 還原捲動位置
+     viewerContainer.scrollLeft = scrollPos;
+  }
+});
+
+// 開始監聽
+if (viewerContainer) {
+  resizeObserver.observe(viewerContainer);
+}
+
 // Theme Toggle Button
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 if (themeToggleBtn) {
@@ -1700,14 +1732,6 @@ window.addEventListener('resize', () => {
   if (container.clientWidth !== containerWidth) {
     containerWidth = container.clientWidth;
     renderAxes();
-  }
-  
-  const ws = document.getElementById('viewer-container');
-  if (ws) {
-      const overflow = ws.style.overflowX;
-      ws.style.overflowX = 'hidden';
-      void ws.offsetHeight; // Trigger reflow
-      ws.style.overflowX = 'auto'; // Restore
   }
 
   // 2. 防抖動重繪

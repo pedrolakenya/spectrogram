@@ -107,13 +107,7 @@ html, body {
   background-color: var(--scrollbar-track);
 }
 
-/* 1. Ensure standard property doesn't conflict */
-#viewer-container {
-  scrollbar-width: auto; /* Allow webkit styles to take precedence */
-  scrollbar-color: auto; /* Allow webkit styles to take precedence */
-}
 
-/* 2. Specific Selectors for the container */
 #viewer-container::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -170,6 +164,10 @@ html, body {
   border: 1px solid var(--border-color);
   background-color: var(--bg-primary);
   transition: background-color 0.3s, border 0.3s;
+  transform: translateZ(0); 
+  will-change: scroll-position;
+  scrollbar-width: auto;
+  scrollbar-color: auto;
 }
 #spectrogram-only {
   position: relative;
