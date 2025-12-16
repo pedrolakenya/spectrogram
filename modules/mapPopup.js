@@ -1420,20 +1420,28 @@ export function initMapPopup({
     refreshMarkers();
   }
 
-  function togglePopup() {
+function togglePopup() {
     if (popup.style.display === 'block') {
       if (isMaximized) toggleMaximize();
       if (isMinimized) toggleMinimize();
-      // 淡出動畫
+      
       popup.classList.add('hidden');
+      
       setTimeout(() => {
         popup.style.display = 'none';
-        popup.classList.remove('hidden');
         document.body.classList.remove('map-open');
       }, 300);
+
       if (textMode) toggleTextMode();
+
     } else {
+      popup.classList.add('hidden');
       popup.style.display = 'block';
+
+      void popup.offsetWidth;
+
+      popup.classList.remove('hidden');
+
       document.body.classList.add('map-open');
       popup.style.width = `${popupWidth}px`;
       popup.style.height = `${popupHeight}px`;
@@ -1442,7 +1450,6 @@ export function initMapPopup({
       }
       updateMap();
       updateCursor();
-      // prompt if overlays are pending (handles case where fetch completed earlier or later)
       promptForPasswordIfNeeded();
     }
   }

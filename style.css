@@ -782,6 +782,7 @@ input[type="range"]#peakThresholdSlider {
   font-family: 'Noto Sans HK', sans-serif;
   white-space: nowrap;
   opacity: 0;
+  z-index: 101;
   pointer-events: none;
   transition: opacity 0.3s ease, transform 0.3s ease;
   overflow-x: auto;
@@ -802,7 +803,6 @@ input[type="range"]#peakThresholdSlider {
 #tool-bar.open {
   opacity: 1;
   pointer-events: auto;
-  z-index: 101;
 }
 
 #tool-bar .toolbar-button {
@@ -1554,9 +1554,8 @@ input.tag-button.editing {
   user-select: none;
   overflow: hidden;
   opacity: 1;
-  transition: opacity 0.3s ease;
   color: var(--text-primary);
-  transition: background 0.3s, color 0.3s, border 0.3s;
+  transition: opacity 0.3s ease, background 0.3s, color 0.3s, border 0.3s;
 }
 
 .map-popup.hidden {
