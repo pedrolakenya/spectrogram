@@ -1,4 +1,5 @@
 import { getApplyWindowFunction, getGoertzelEnergyFunction } from './callAnalysisPopup.js';
+import { getTimeExpansionMode } from './fileState.js';
 export const DEFAULT_DETECTION_CONFIG = {
   // Energy threshold (dB below maximum within frequency range)
   // Typical: -18 dB (Avisoft), -24 dB (SonoBat, more conservative)
@@ -722,6 +723,16 @@ export class BatCallDetector {
       
       return true;
     });
+    
+    // ============================================================
+    // [2025] Apply Time Expansion Correction to All Detected Calls
+    // If Time Expansion mode is enabled, correct frequencies and durations
+    // ============================================================
+    if (getTimeExpansionMode()) {
+      for (const call of filteredCalls) {
+        call.applyTimeExpansion(10);  // Default 10x time expansion
+      }
+    }
     
     return filteredCalls;
   }
