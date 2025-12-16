@@ -403,39 +403,43 @@ stopBtn.addEventListener('click', () => {
   hideStopButton();
 });
 
-// [修正 Scrollbar 樣式]
-// 使用 ResizeObserver 監聽容器本身的變化，而非 window
-const viewerContainer = document.getElementById('viewer-container');
+// [修正 Scrollbar 樣式 - 最終版]
+// 根據你的建議，我們改為監聽 viewer-wrapper 的尺寸變化
+const wrapperElem = document.getElementById('viewer-wrapper');
+const containerElem = document.getElementById('viewer-container');
 
-if (viewerContainer) {
-  let isReflowing = false;
+if (wrapperElem && containerElem) {
+  let resizeTimeout;
 
   const ro = new ResizeObserver(() => {
-    // 防止無限迴圈
-    if (isReflowing) return;
+    // 1. Sidebar 拖動會改變 wrapper 大小
+    // 我們利用這個時機，強制瀏覽器 "重刷" container 的卷軸樣式
     
-    // 1. 更新座標軸 (原本你在 window resize 裡的邏輯移到這裡)
-    if (containerWidth !== viewerContainer.clientWidth) {
-        containerWidth = viewerContainer.clientWidth;
-        renderAxes();
-    }
-
-    // 2. 強制瀏覽器重繪 Scrollbar
-    // 當 Scrollbar 出現時，Chrome 偶爾會偷懶用原生樣式，這裡強制它 "刷新" 一次
+    // 使用 requestAnimationFrame 確保在下一幀渲染前執行
     window.requestAnimationFrame(() => {
-      isReflowing = true;
-      const originalOverflow = viewerContainer.style.overflowX;
+      // 這種 "切換 overflow" 的技巧是強迫 Chrome 重新計算樣式的標準解法
+      containerElem.style.overflowX = 'hidden';
       
-      // 瞬間切換 overflow 屬性來觸發重繪
-      viewerContainer.style.overflowX = 'hidden';
-      void viewerContainer.offsetHeight; // 讀取高度以強制 Reflow
-      viewerContainer.style.overflowX = 'auto'; // 還原
+      // 強制讀取一個 layout 屬性 (offsetWidth)，強迫瀏覽器立刻執行 Reflow
+      void containerElem.offsetWidth; 
       
-      isReflowing = false;
+      containerElem.style.overflowX = 'auto';
     });
+
+    // 2. 原本的 update axes 邏輯保留 (防抖動)
+    if (resizeTimeout) clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+       if (typeof renderAxes === 'function' && typeof containerWidth !== 'undefined') {
+         if (container.clientWidth !== containerWidth) {
+           containerWidth = container.clientWidth;
+           renderAxes();
+         }
+       }
+    }, 30);
   });
 
-  ro.observe(viewerContainer);
+  // 監聽 wrapper，因為它是 Sidebar 變化的直接受害者
+  ro.observe(wrapperElem);
 }
 
 // Theme Toggle Button

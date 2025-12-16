@@ -107,10 +107,10 @@ html, body {
   background-color: var(--scrollbar-track);
 }
 
-
 #viewer-container::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 10px !important;
+  height: 10px !important;
+  display: block !important; /* 強制顯示 */
 }
 
 #viewer-container::-webkit-scrollbar-track {
@@ -164,11 +164,12 @@ html, body {
   border: 1px solid var(--border-color);
   background-color: var(--bg-primary);
   transition: background-color 0.3s, border 0.3s;
-  transform: translateZ(0); 
-  will-change: scroll-position;
-  scrollbar-width: auto;
-  scrollbar-color: auto;
+  scrollbar-width: auto !important; 
+  scrollbar-color: auto !important; 
+  transform: translate3d(0, 0, 0); 
+  display: block;
 }
+
 #spectrogram-only {
   position: relative;
   display: inline-block;
