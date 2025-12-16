@@ -403,56 +403,6 @@ stopBtn.addEventListener('click', () => {
   hideStopButton();
 });
 
-// [修正 Scrollbar 樣式 - Class 重注法]
-const wrapperElem = document.getElementById('viewer-wrapper');
-const containerElem = document.getElementById('viewer-container');
-
-// 初始化：確保一開始就有這個 class
-if (containerElem) {
-  containerElem.classList.add('custom-scrollbar');
-}
-
-if (wrapperElem && containerElem) {
-  let resizeTimeout;
-  let isReflowing = false;
-
-  const ro = new ResizeObserver(() => {
-    // 防止回圈
-    if (isReflowing) return;
-
-    // 1. 防抖動更新座標軸 (保留原有邏輯)
-    if (resizeTimeout) clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-       if (typeof renderAxes === 'function' && typeof containerWidth !== 'undefined') {
-         if (containerElem.clientWidth !== containerWidth) {
-           containerWidth = containerElem.clientWidth;
-           renderAxes();
-         }
-       }
-    }, 30);
-
-    // 2. 關鍵修正：模擬 Zoom In 的效果
-    // 當 Sidebar 擠壓導致 Wrapper 變動時，我們強制重置 Scrollbar 的 Class
-    window.requestAnimationFrame(() => {
-      isReflowing = true;
-      
-      // A. 拔掉 Class (瀏覽器會暫時切回預設樣式或無樣式)
-      containerElem.classList.remove('custom-scrollbar');
-      
-      // B. 強制 Reflow (讀取 offsetWidth 迫使瀏覽器計算當前狀態)
-      void containerElem.offsetWidth;
-      
-      // C. 加回 Class (瀏覽器發現有新樣式，必須重新構建 Webkit Scrollbar)
-      containerElem.classList.add('custom-scrollbar');
-      
-      isReflowing = false;
-    });
-  });
-
-  // 監聽 Wrapper (因為它是被 Sidebar 擠壓的源頭)
-  ro.observe(wrapperElem);
-}
-
 // Theme Toggle Button
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 if (themeToggleBtn) {
