@@ -1914,9 +1914,9 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
        maxDb = callPeakPower_dB;
     }
 
-    // Formula: Min + (Range * 0.4) - Same aggression as High Freq
+    // Formula: Min + (Range * 0.5) - Same aggression as High Freq
     const dynamicRange = maxDb - minDb;
-    const robustNoiseFloor_dB = minDb + dynamicRange * 0.4;
+    const robustNoiseFloor_dB = minDb + dynamicRange * 0.5;
 
     console.log('[findOptimalLowFrequencyThreshold] NOISE FLOOR CALCULATION (OPTIMIZED SCOPE):');
     console.log(`  Scope: Time[${validPeakFrameIdx}-${searchEndFrame}], Freq[Bin 0-${peakBinIdx}]`);
