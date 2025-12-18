@@ -2,31 +2,6 @@
    CSS Variables for Light/Dark Mode Theme Support
    ============================================================ */
 :root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f5;
-  --bg-tertiary: #ffffff;
-  --text-primary: #000000;
-  --text-secondary: #333333;
-  --paravalue-color:#0066cc;
-  --border-color: #cccccc;
-  --input-bg: #ffffff;
-  --button-hover: #999;
-  --zoombutton-bg: #fff;
-  --zoombutton-color: #333333;
-  --zoombutton-hover: #ccc; 
-  --zoombutton-disable: #eee;
-  --icon-color: #ffffff;
-  --toolbar-bg: #ffffff;
-  --sidebar-bg: #ffffff;
-  --dragbar-bg: #ffffff;
-  --dragbar-icon-color: #222222;
-  --moon-icon-color: #ffffff;
-  --scrollbar-track: #ffffff;
-  --scrollbar-thumb: #ccc;
-  --scrollbar-thumb-hover: #999;
-}
-
-body.dark-mode {
   --bg-primary: #131314;
   --bg-secondary: #1E1F20;
   --bg-tertiary: #28292a;
@@ -49,6 +24,31 @@ body.dark-mode {
   --scrollbar-track: #1E1F20;
   --scrollbar-thumb: #7a7a7a; 
   --scrollbar-thumb-hover: #c7c7c7;
+}
+
+body.light-mode {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #ffffff;
+  --text-primary: #000000;
+  --text-secondary: #333333;
+  --paravalue-color:#0066cc;
+  --border-color: #cccccc;
+  --input-bg: #ffffff;
+  --button-hover: #999;
+  --zoombutton-bg: #fff;
+  --zoombutton-color: #333333;
+  --zoombutton-hover: #ccc; 
+  --zoombutton-disable: #eee;
+  --icon-color: #ffffff;
+  --toolbar-bg: #ffffff;
+  --sidebar-bg: #ffffff;
+  --dragbar-bg: #ffffff;
+  --dragbar-icon-color: #222222;
+  --moon-icon-color: #ffffff;
+  --scrollbar-track: #ffffff;
+  --scrollbar-thumb: #ccc;
+  --scrollbar-thumb-hover: #999;
 }
 
 /* === Selection Time Info (右上角) === */
@@ -1086,7 +1086,7 @@ body.markers-disabled .freq-marker {
 .sidebar-button {
   width: 30px;
   height: 30px;
-  background-color: #555;
+  background-color: #333537;
   border: none;
   border-radius: 8px;
   display: flex;
@@ -1102,11 +1102,11 @@ body.markers-disabled .freq-marker {
   background-color: var(--button-hover);
 }
 
-body.dark-mode .sidebar-button {
-  background-color: #333537;
+body.light-mode .sidebar-button {
+  background-color: #555;
 }
 
-body.dark-mode .sidebar-button:hover {
+body.light-mode .sidebar-button:hover {
   background-color: var(--button-hover);
 }
 

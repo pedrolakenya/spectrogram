@@ -409,15 +409,17 @@ if (themeToggleBtn) {
   // Check if user has a saved preference in localStorage
   const savedTheme = localStorage.getItem('theme-mode');
 
-  if (savedTheme === 'dark' || !savedTheme) {
-    document.body.classList.add('dark-mode');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-mode');
   }
 
   themeToggleBtn.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-    const isDarkMode = document.body.classList.contains('dark-mode');
-    localStorage.setItem('theme-mode', isDarkMode ? 'dark' : 'light');
-    console.log('Theme toggled to:', isDarkMode ? 'Dark' : 'Light');
+    document.body.classList.toggle('light-mode');
+    
+    const isLightMode = document.body.classList.contains('light-mode');
+    
+    localStorage.setItem('theme-mode', isLightMode ? 'light' : 'dark');
+    console.log('Theme toggled to:', isLightMode ? 'Light' : 'Dark');
   });
 }
 
