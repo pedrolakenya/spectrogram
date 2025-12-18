@@ -431,7 +431,8 @@ export function initFrequencyHover({
     }
   });
 
-// 異步計算詳細的 Bat Call 參數
+  // 異步計算詳細的 Bat Call 參數
+  // [CRITICAL FIX] 確保使用與 Call Analysis Popup 完全相同的邏輯和引擎
   async function calculateBatCallParams(sel) {
     try {
       const ws = getWavesurfer();
@@ -440,11 +441,9 @@ export function initFrequencyHover({
       const { startTime, endTime, Flow, Fhigh } = sel.data;
       const durationMs = (endTime - startTime) * 1000;
 
-      // 根據 Time Expansion 模式計算用於判斷的持續時間
       const timeExp = getTimeExpansionMode();
       const judgeDurationMs = timeExp ? (durationMs / 10) : durationMs;
       
-      // 只有 displayTime < 100ms 時才計算
       if (judgeDurationMs >= 100) return null;
 
       const sampleRate = window.__spectrogramSettings?.sampleRate || 256000;
@@ -456,16 +455,13 @@ export function initFrequencyHover({
       const decodedData = ws.getDecodedData();
       if (!decodedData) return null;
 
-      // 提取原始音頻數據
       const rawAudioData = new Float32Array(decodedData.getChannelData(0).slice(startSample, endSample));
 
       // ============================================================
-      // [CRITICAL FIX] 1. 同步配置：從全局記憶體讀取設定
-      // 確保 Tooltip 使用與 Popup 完全相同的參數 (Thresholds, Filter 等)
+      // [CRITICAL SYNC] 1. 從 window.__batCallControlsMemory 同步配置
       // ============================================================
       const memory = window.__batCallControlsMemory || {};
       
-      // 將記憶體中的設定套用到 defaultDetector
       Object.assign(defaultDetector.config, {
         callThreshold_dB: memory.callThreshold_dB,
         highFreqThreshold_dB: memory.highFreqThreshold_dB,
@@ -476,11 +472,9 @@ export function initFrequencyHover({
         minCallDuration_ms: memory.minCallDuration_ms,
         fftSize: parseInt(memory.fftSize) || 1024,
         hopPercent: memory.hopPercent,
-        // Anti-Rebounce
         enableBackwardEndFreqScan: memory.enableBackwardEndFreqScan !== false,
         maxFrequencyDropThreshold_kHz: memory.maxFrequencyDropThreshold_kHz || 10,
         protectionWindowAfterPeak_ms: memory.protectionWindowAfterPeak_ms || 10,
-        // Highpass Filter
         enableHighpassFilter: memory.enableHighpassFilter !== false,
         highpassFilterFreq_kHz: memory.highpassFilterFreq_kHz || 40,
         highpassFilterFreq_kHz_isAuto: memory.highpassFilterFreq_kHz_isAuto !== false,
@@ -488,15 +482,19 @@ export function initFrequencyHover({
       });
 
       // ============================================================
-      // [CRITICAL FIX] 2. 應用 Highpass Filter (預處理)
-      // 與 callAnalysisPopup.js 保持一致：如果啟用濾波，先處理音頻
+      // [CRITICAL SYNC] 2. 注入 WASM Engine
+      // 確保使用與 Popup 相同的 FFT 運算核心 (解決 49.40 vs 49.49 問題)
+      // ============================================================
+      const analysisWasmEngine = getAnalysisWasmEngine();
+      defaultDetector.wasmEngine = analysisWasmEngine;
+
+      // ============================================================
+      // [CRITICAL SYNC] 3. 應用 Highpass Filter
       // ============================================================
       let audioDataForDetection = rawAudioData;
 
       if (defaultDetector.config.enableHighpassFilter) {
-        // 如果是 Auto 模式且沒有具體值，這裡使用預設 40kHz (或上次記憶值)
-        // 注意：Popup 會先算 Peak 再算 Filter Freq，但在 Tooltip 為了效能，
-        // 我們直接使用記憶體中"上一次成功分析"的值，或是預設值。
+        // 使用記憶值或預設值。Tooltip 不進行 Pre-Peak 掃描以節省效能
         const highpassFreq_Hz = (defaultDetector.config.highpassFilterFreq_kHz || 40) * 1000;
         
         audioDataForDetection = defaultDetector.applyHighpassFilter(
@@ -507,11 +505,8 @@ export function initFrequencyHover({
         );
       }
 
-      // ============================================================
-      // 3. 執行檢測 (使用處理過的音頻)
-      // ============================================================
       const calls = await defaultDetector.detectCalls(
-        audioDataForDetection, // <--- 使用可能已濾波的數據
+        audioDataForDetection, 
         sampleRate, 
         Flow,
         Fhigh,
@@ -519,13 +514,9 @@ export function initFrequencyHover({
       );
 
       if (calls && calls.length > 0) {
-        // 取第一個或最顯著的 call
         const bestCall = calls[0];
-        
-        // 將分析結果存入 selection data
         sel.data.batCall = bestCall;
         
-        // 立即更新 tooltip 顯示
         if (sel.tooltip) {
           updateTooltipValues(sel, 0, 0, 0, 0);
         }
@@ -649,7 +640,8 @@ export function initFrequencyHover({
     tooltip.className = 'draggable-tooltip freq-tooltip';
     tooltip.style.left = `${left + width + 10}px`;
     tooltip.style.top = `${top}px`;
-    // Initial display with '-' until data is ready
+    
+    // Initial State: Show dashes
     const dispFhigh = '-';
     const dispFlow = '-';
     const dispBandwidth = '-';
@@ -1023,7 +1015,6 @@ export function initFrequencyHover({
     } 
 
     // Update label under the selection box with Geometric Duration
-    // (We maintain geometric duration here so the user can see the box size while resizing)
     if (sel.durationLabel) {
       const geometricDurationMs = (data.endTime - data.startTime) * 1000;
       const displayLabelDuration = timeExp ? (geometricDurationMs / 10) : geometricDurationMs;
