@@ -2206,7 +2206,7 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
    * - SonoBat: Duration-weighted frequency averaging
    * - Kaleidoscope: Multi-frame analysis with robustness checks
    * - BatSound: Peak prominence and edge detection
-   * 
+   *  
    * Updates call.peakFreq, startFreq, endFreq, characteristicFreq, bandwidth, duration
    */
   measureFrequencyParameters(call, flowKHz, fhighKHz, freqBins, freqResolution) {
