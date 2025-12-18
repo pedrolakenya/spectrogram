@@ -1369,29 +1369,52 @@ findOptimalHighFrequencyThreshold(spectrogram, freqBins, flowKHz, fhighKHz, call
     
     // ============================================================
     // 2025 NEW: Calculate Robust Noise Floor (35th Percentile)
-    // This represents the "pure noise/low signal" baseline to filter false positives
     // ============================================================
     // 1. Calculate Dynamic Range Noise Floor
     let minDb = Infinity;
     let maxDb = -Infinity;
 
-    // 遍歷整個 spectrogram 找最大最小值 (比 sort 快)
-    for (let f = 0; f < spectrogram.length; f++) {
+    // 1a. Find the Peak Bin Index within the Peak Frame
+    // This defines the lower bound for the frequency search
+    let peakBinIdx = 0;
+    const validPeakFrameIdx = Math.min(peakFrameIdx, spectrogram.length - 1);
+    
+    if (spectrogram.length > 0) {
+      const pFrame = spectrogram[validPeakFrameIdx];
+      let tempMax = -Infinity;
+      for (let b = 0; b < pFrame.length; b++) {
+        if (pFrame[b] > tempMax) {
+          tempMax = pFrame[b];
+          peakBinIdx = b;
+        }
+      }
+    }
+
+    // 1b. Iterate within the restricted scope to find Min/Max dB
+    for (let f = 0; f <= validPeakFrameIdx; f++) {
       const frame = spectrogram[f];
-      for (let b = 0; b < frame.length; b++) {
+      // Scan only from Peak Bin upwards to the top frequency
+      for (let b = peakBinIdx; b < frame.length; b++) {
         const val = frame[b];
         if (val < minDb) minDb = val;
         if (val > maxDb) maxDb = val;
       }
     }
 
-    // 根據你的公式：Min + (Range * 0.6)
+    // Safety fallback if scan failed (e.g. empty range)
+    if (minDb === Infinity) {
+       minDb = -100;
+       maxDb = callPeakPower_dB;
+    }
+
+    // Formula: Min + (Range * 0.6)
     const dynamicRange = maxDb - minDb;
     const robustNoiseFloor_dB = minDb + dynamicRange * 0.6;
     
-    console.log('[findOptimalHighFrequencyThreshold] NOISE FLOOR CALCULATION:');
+    console.log('[findOptimalHighFrequencyThreshold] NOISE FLOOR CALCULATION (OPTIMIZED SCOPE):');
+    console.log(`  Scope: Time[0-${validPeakFrameIdx}], Freq[Bin ${peakBinIdx}-${numBins-1}]`);
     console.log(`  Min dB: ${minDb.toFixed(2)}, Max dB: ${maxDb.toFixed(2)}, Range: ${dynamicRange.toFixed(2)}`);
-    console.log(`  Robust Noise Floor: ${minDb.toFixed(2)} + ${dynamicRange.toFixed(2)} * 0.35 = ${robustNoiseFloor_dB.toFixed(2)} dB`);
+    console.log(`  Robust Noise Floor: ${minDb.toFixed(2)} + ${dynamicRange.toFixed(2)} * 0.6 = ${robustNoiseFloor_dB.toFixed(2)} dB`);
     console.log(`  Peak Power (callPeakPower_dB): ${callPeakPower_dB.toFixed(2)} dB`);
     console.log('');
     
