@@ -233,8 +233,6 @@ export function initFrequencyHover({
     const s = Math.min(startMs, endMs);
     const e = Math.max(startMs, endMs);
     const d = e - s;
-    // startMs/endMs are in ms (internal). In Time Expansion mode we display
-    // time values divided by 10.
     const displayS = timeExp ? (s / 10) : s;
     const displayE = timeExp ? (e / 10) : e;
     const displayD = timeExp ? (d / 10) : d;
@@ -260,12 +258,8 @@ export function initFrequencyHover({
     const moveEv = type === 'touch' ? 'touchmove' : 'mousemove';
     const upEv = type === 'touch' ? 'touchend' : 'mouseup';
 
-    // Ctrl-key state while drawing
     let ctrlPressed = false;
-    // track current selection duration (ms) while drawing so we can
-    // suppress Ctrl icon and auto-expand for very short selections
     let currentSelectionDurationMs = 0;
-    // Create ctrl icon element and keyboard handlers; visibility controlled below
     const ctrlIcon = document.createElement('i');
     ctrlIcon.className = 'fa-solid fa-magnifying-glass selection-ctrl-icon';
     ctrlIcon.style.position = 'absolute';
@@ -279,7 +273,6 @@ export function initFrequencyHover({
     const keyDownHandler = (ev) => {
       if (ev.key === 'Control') {
         ctrlPressed = true;
-        // only show icon when selection duration is >= 100ms
         if (currentSelectionDurationMs >= 100) {
           ctrlIcon.style.display = '';
         }
@@ -291,7 +284,6 @@ export function initFrequencyHover({
         ctrlIcon.style.display = 'none';
       }
     };
-    // Attach keyboard listeners while drawing so icon responds even without mouse move
     window.addEventListener('keydown', keyDownHandler);
     window.addEventListener('keyup', keyUpHandler);
 
@@ -306,13 +298,13 @@ export function initFrequencyHover({
       currentY = clamp(currentY, 0, viewer.clientHeight - getScrollbarThickness());
       const x = Math.min(currentX, startX);
       const width = Math.abs(currentX - startX);
-      // 計算時間
+      
       const actualWidth = getDuration() * getZoomLevel();
       const startTimeMs = (startX / actualWidth) * getDuration() * 1000;
       const endTimeMs = (currentX / actualWidth) * getDuration() * 1000;
       currentSelectionDurationMs = Math.abs(endTimeMs - startTimeMs);
       showSelectionTimeInfo(startTimeMs, endTimeMs);
-      // 畫框
+      
       const y = Math.min(currentY, startY);
       const height = Math.abs(currentY - startY);
       selectionRect.style.left = `${x}px`;
@@ -320,9 +312,7 @@ export function initFrequencyHover({
       selectionRect.style.width = `${width}px`;
       selectionRect.style.height = `${height}px`;
 
-      // Update ctrl icon visibility depending on current ctrl state (mouse event or keyboard)
       const evtCtrl = type === 'touch' ? false : !!(ev.ctrlKey);
-      // Only show ctrl icon for selections that are at least 100ms
       if ((evtCtrl || ctrlPressed) && currentSelectionDurationMs >= 100) {
         ctrlIcon.style.display = '';
       } else {
@@ -348,7 +338,6 @@ export function initFrequencyHover({
       const minThreshold = 3;
       if (width <= minThreshold || height <= minThreshold) {
         viewer.removeChild(selectionRect);
-        // cleanup keyboard handlers added during drawing
         window.removeEventListener('keydown', keyDownHandler);
         window.removeEventListener('keyup', keyUpHandler);
         selectionRect = null;
@@ -372,7 +361,6 @@ export function initFrequencyHover({
       const newSel = createTooltip(left, top, width, height, Fhigh, Flow, Bandwidth, Duration, selectionRect, startTime, endTime);
       selectionRect = null;
       suppressHover = false;
-      // 建立 selection area 後，直接設為 hoveredSelection
       hoveredSelection = newSel;
 
       if (lastClientX !== null && lastClientY !== null) {
@@ -382,12 +370,10 @@ export function initFrequencyHover({
           hoveredSelection = newSel;
         }
       }
-      // If Ctrl was pressed during selection completion, immediately trigger expand-selection
+      
       const completedWithCtrl = ctrlPressed || (ev && ev.ctrlKey);
-      // Only allow immediate Ctrl-expand for selections >= 100ms
       const selDurationMs = (newSel.data.endTime - newSel.data.startTime) * 1000;
       if (completedWithCtrl && selDurationMs >= 100) {
-        // behave like clicking expand button
         suppressHover = false;
         isOverBtnGroup = false;
         viewer.dispatchEvent(new CustomEvent('expand-selection', {
@@ -398,7 +384,6 @@ export function initFrequencyHover({
             updateHoverDisplay({ clientX: lastClientX, clientY: lastClientY });
           }, 0);
         }
-        // remove the created selection visuals (no btn group / duration)
         removeSelection(newSel);
       }
     };
@@ -427,7 +412,6 @@ export function initFrequencyHover({
     }
   });
 
-  // 改為 Ctrl + 右鍵 (contextmenu) 創建/刪除 persistent line
   viewer.addEventListener('contextmenu', (e) => {
     e.preventDefault();
 
@@ -464,7 +448,6 @@ export function initFrequencyHover({
     }
   });
 
-  // 異步計算詳細的 Bat Call 參數
   async function calculateBatCallParams(sel) {
     try {
       const ws = getWavesurfer();
@@ -473,11 +456,9 @@ export function initFrequencyHover({
       const { startTime, endTime, Flow, Fhigh } = sel.data;
       const durationMs = (endTime - startTime) * 1000;
 
-      // 根據 Time Expansion 模式計算用於判斷的持續時間
       const timeExp = getTimeExpansionMode();
       const judgeDurationMs = timeExp ? (durationMs / 10) : durationMs;
       
-      // 只有 displayTime < 100ms 時才計算
       if (judgeDurationMs >= 100) return null;
 
       const sampleRate = window.__spectrogramSettings?.sampleRate || 256000;
@@ -489,25 +470,20 @@ export function initFrequencyHover({
       const decodedData = ws.getDecodedData();
       if (!decodedData) return null;
 
-      // 提取音頻數據
       const audioData = new Float32Array(decodedData.getChannelData(0).slice(startSample, endSample));
 
       const calls = await defaultDetector.detectCalls(
         audioData, 
         sampleRate, 
-        Flow,      // kHz
-        Fhigh,     // kHz
-        { skipSNR: false } // 進行完整分析包含 SNR
+        Flow,
+        Fhigh,
+        { skipSNR: false }
       );
 
       if (calls && calls.length > 0) {
-        // 取第一個或最顯著的 call
         const bestCall = calls[0];
-        
-        // 將分析結果存入 selection data
         sel.data.batCall = bestCall;
         
-        // 立即更新 tooltip 顯示
         if (sel.tooltip) {
           updateTooltipValues(sel, 0, 0, 0, 0);
         }
@@ -549,9 +525,9 @@ export function initFrequencyHover({
     selections.push(selObj);
 
     if (judgeDurationMs <= 100) {
-      createBtnGroup(selObj, true);  // isShortSelection = true
+      createBtnGroup(selObj, true);
     } else {
-      createBtnGroup(selObj, false);  // isShortSelection = false
+      createBtnGroup(selObj, false);
     }
 
     enableResize(selObj);
@@ -921,17 +897,11 @@ export function initFrequencyHover({
           sel.data.Flow = newFlow;
         }
   
-        updateSelections();
-
-        const durationMs = (sel.data.endTime - sel.data.startTime) * 1000;
-        const timeExp = getTimeExpansionMode();
-        const judgeDurationMs = timeExp ? (durationMs / 10) : durationMs;
+        // 2025: 拖動時清除舊的分析數據，只更新視覺選區
+        if (sel.data.batCall) delete sel.data.batCall;
+        if (sel.data.peakFreq) delete sel.data.peakFreq;
         
-        if (judgeDurationMs < 100) {
-          calculateBatCallParams(sel).catch(err => {
-            console.error('Resize 時計算詳細參數失敗:', err);
-          });
-        }
+        updateSelections();
       };
   
       const upHandler = () => {
@@ -958,6 +928,7 @@ export function initFrequencyHover({
         window.removeEventListener('mousemove', moveHandler);
         window.removeEventListener('mouseup', upHandler);
 
+        // 2025: 在 mouseup 後才進行完整分析
         const durationMs = (sel.data.endTime - sel.data.startTime) * 1000;
         const timeExp = getTimeExpansionMode();
         const judgeDurationMs = timeExp ? (durationMs / 10) : durationMs;
